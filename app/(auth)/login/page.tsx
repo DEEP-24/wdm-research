@@ -50,7 +50,13 @@ export default function LoginPage() {
       existingUsers.push(testUser);
       localStorage.setItem("users", JSON.stringify(existingUsers));
     }
-  }, []);
+
+    // Check if there's a current user and redirect if found
+    const currentUser = localStorage.getItem("currentUser");
+    if (currentUser) {
+      router.push("/");
+    }
+  }, [router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });

@@ -12,7 +12,9 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { User } from "@/types/user";
 import {
+  AlertCircleIcon,
   ArrowUpDownIcon,
+  BadgeDollarSignIcon,
   BellIcon,
   CalendarCheck2Icon,
   CalendarIcon,
@@ -21,6 +23,7 @@ import {
   FileTextIcon,
   FolderKanbanIcon,
   HomeIcon,
+  InfoIcon,
   MenuIcon,
   MessageCircleIcon,
   MessageSquareIcon,
@@ -38,14 +41,13 @@ const sidebarItems = [
   { icon: HomeIcon, label: "Dashboard", href: "/" },
   { icon: CalendarIcon, label: "Events", href: "/events" },
   { icon: CalendarCheck2Icon, label: "Reservations", href: "/reservations" },
-  { icon: DollarSignIcon, label: "Fundings", href: "/fundings" },
-  { icon: FileTextIcon, label: "Grant Applications", href: "/grants" },
-  { icon: MessageSquareIcon, label: "Discussions", href: "/discussions" },
   { icon: UserIcon, label: "Profile", href: "/profile" },
   { icon: FolderKanbanIcon, label: "Projects", href: "/projects" },
   { icon: ScanEyeIcon, label: "Review", href: "/review" },
   { icon: ArrowUpDownIcon, label: "File Sharing", href: "/file-sharing" },
   { icon: MessageCircleIcon, label: "Forums", href: "/forums" },
+  { icon: BadgeDollarSignIcon, label: "Funding Opportunities", href: "/funding-opportunities" },
+  { icon: FileTextIcon, label: "Grant Applications", href: "/grant-applications" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -141,14 +143,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 placeholder="Search"
               />
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-blue-700 hover:text-blue-800 hover:bg-blue-50 relative"
-            >
-              <BellIcon className="h-5 w-5" />
-              <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full" />
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-2">
