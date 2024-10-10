@@ -44,12 +44,16 @@ export default function FundingOpportunities() {
     localStorage.setItem("grantApplications", JSON.stringify(updatedApplications));
   };
 
-  const filteredApplications = applications.filter(
-    (app) =>
-      app.project_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.project_description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.keywords.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredApplications = applications.filter((app) => {
+    const searchTermLower = searchTerm.toLowerCase();
+    return (
+      app.project_title.toLowerCase().includes(searchTermLower) ||
+      app.project_description.toLowerCase().includes(searchTermLower) ||
+      app.keywords.toLowerCase().includes(searchTermLower) ||
+      app.status.toLowerCase().includes(searchTermLower) ||
+      app.request_amount.toString().includes(searchTerm)
+    );
+  });
 
   return (
     <div className="container mx-auto p-4 space-y-6">
@@ -70,15 +74,15 @@ export default function FundingOpportunities() {
             <p className="text-xl text-gray-500">No grant applications found.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredApplications.map((application) => (
               <Card
                 key={application.project_id}
-                className="hover:shadow-lg transition-shadow duration-300 flex flex-col"
+                className="hover:shadow-lg transition-shadow duration-300 flex flex-col h-full"
               >
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-xl font-semibold text-blue-700">
+                <CardHeader className="flex-grow">
+                  <div className="flex justify-between items-start mb-2">
+                    <CardTitle className="text-lg font-semibold text-blue-700 line-clamp-2">
                       {application.project_title}
                     </CardTitle>
                     <Badge
@@ -89,40 +93,32 @@ export default function FundingOpportunities() {
                             ? "destructive"
                             : "secondary"
                       }
+                      className="ml-2 shrink-0"
                     >
                       {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
                     </Badge>
                   </div>
-                  <Badge variant="outline" className="mt-2">
-                    <CalendarIcon className="w-4 h-4 mr-1" />
-                    ID: {application.opportunity_id}
-                  </Badge>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-gray-600 mb-4 line-clamp-3">
+                  <p className="text-gray-600 text-sm line-clamp-3 mb-2">
                     {application.project_description}
                   </p>
-                  <div className="space-y-2 text-sm">
-                    <p>
-                      <strong>Request Amount:</strong> $
-                      {application.request_amount.toLocaleString()}
-                    </p>
-                    <p>
-                      <strong>Keywords:</strong> {application.keywords}
-                    </p>
+                  <div className="text-sm">
+                    <p className="font-semibold">${application.request_amount.toLocaleString()}</p>
+                    <p className="text-gray-500 line-clamp-1">{application.keywords}</p>
                   </div>
-                </CardContent>
+                </CardHeader>
                 <CardContent className="pt-0">
                   {application.status === "submitted" && currentUser ? (
                     <div className="flex space-x-2">
                       <Button
-                        className="flex-1"
+                        className="flex-1 text-xs"
+                        size="sm"
                         onClick={() => updateApplicationStatus(application.project_id, "accepted")}
                       >
                         Accept
                       </Button>
                       <Button
-                        className="flex-1"
+                        className="flex-1 text-xs"
+                        size="sm"
                         variant="destructive"
                         onClick={() => updateApplicationStatus(application.project_id, "rejected")}
                       >
@@ -130,7 +126,7 @@ export default function FundingOpportunities() {
                       </Button>
                     </div>
                   ) : (
-                    <Button className="w-full" disabled>
+                    <Button className="w-full text-xs" size="sm" disabled>
                       {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
                     </Button>
                   )}

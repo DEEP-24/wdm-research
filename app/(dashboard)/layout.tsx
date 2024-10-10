@@ -12,21 +12,17 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { User } from "@/types/user";
 import {
-  AlertCircleIcon,
   ArrowUpDownIcon,
   BadgeDollarSignIcon,
-  BellIcon,
   CalendarCheck2Icon,
   CalendarIcon,
   ChevronDownIcon,
-  DollarSignIcon,
   FileTextIcon,
   FolderKanbanIcon,
+  HelpCircle,
   HomeIcon,
-  InfoIcon,
   MenuIcon,
   MessageCircleIcon,
-  MessageSquareIcon,
   ScanEyeIcon,
   SearchIcon,
   SendIcon,
@@ -48,6 +44,7 @@ const sidebarItems = [
   { icon: MessageCircleIcon, label: "Forums", href: "/forums" },
   { icon: BadgeDollarSignIcon, label: "Funding Opportunities", href: "/funding-opportunities" },
   { icon: FileTextIcon, label: "Grant Applications", href: "/grant-applications" },
+  { icon: HelpCircle, label: "Support", href: "/support" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -131,7 +128,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <MenuIcon className="h-6 w-6" />
             </Button>
             <h2 className="text-xl font-semibold text-blue-700 hidden sm:block">
-              {sidebarItems.find((item) => item.href === pathname)?.label || "Dashboard"}
+              {sidebarItems.find((item) => item.href === pathname)?.label}
             </h2>
           </div>
           <div className="flex items-center space-x-4">
