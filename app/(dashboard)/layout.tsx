@@ -152,7 +152,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => router.push("/dashboard/profile")}>
+                <DropdownMenuItem onSelect={() => router.push("/profile")}>
                   Profile
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={handleLogout}>Logout</DropdownMenuItem>

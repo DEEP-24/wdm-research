@@ -41,11 +41,15 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Always add or update the test user in localStorage
+    // Check if the test user already exists in localStorage
     const existingUsers: User[] = JSON.parse(localStorage.getItem("users") || "[]");
-    const updatedUsers = existingUsers.filter((user) => user.id !== testUser.id);
-    updatedUsers.push(testUser);
-    localStorage.setItem("users", JSON.stringify(updatedUsers));
+    const testUserExists = existingUsers.some((user) => user.id === testUser.id);
+
+    if (!testUserExists) {
+      // Only add the test user if it doesn't exist
+      existingUsers.push(testUser);
+      localStorage.setItem("users", JSON.stringify(existingUsers));
+    }
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
