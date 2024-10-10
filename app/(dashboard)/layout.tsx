@@ -1,6 +1,5 @@
 "use client";
 
-import PageHeading from "@/app/(dashboard)/_components/page-heading";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,15 +12,16 @@ import { Input } from "@/components/ui/input";
 import type { User } from "@/types/user";
 import {
   BellIcon,
-  BriefcaseIcon,
   CalendarCheck2Icon,
   CalendarIcon,
   ChevronDownIcon,
   DollarSignIcon,
   FileTextIcon,
+  FolderKanbanIcon,
   HomeIcon,
   MenuIcon,
   MessageSquareIcon,
+  ScanEyeIcon,
   SearchIcon,
   UserIcon,
   XIcon,
@@ -38,7 +38,8 @@ const sidebarItems = [
   { icon: FileTextIcon, label: "Grant Applications", href: "/grants" },
   { icon: MessageSquareIcon, label: "Discussions", href: "/discussions" },
   { icon: UserIcon, label: "Profile", href: "/profile" },
-  { icon: BriefcaseIcon, label: "Projects", href: "/projects" },
+  { icon: FolderKanbanIcon, label: "Projects", href: "/projects" },
+  { icon: ScanEyeIcon, label: "Review", href: "/review" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
