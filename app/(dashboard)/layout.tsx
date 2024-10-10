@@ -27,6 +27,7 @@ import {
   ChevronDownIcon,
 } from "lucide-react";
 import type { User } from "@/types/user";
+import PageHeading from "@/app/(dashboard)/_components/page-heading";
 
 const sidebarItems = [
   { icon: HomeIcon, label: "Dashboard", href: "/" },
@@ -102,7 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b border-blue-200 p-4 flex justify-between items-center">
           <div className="flex items-center">
             <Button
@@ -112,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <MenuIcon className="h-6 w-6" />
             </Button>
-            <h2 className="text-2xl font-semibold text-blue-700">Dashboard</h2>
+            <PageHeading title="Dashboard" />
           </div>
           <div className="flex items-center space-x-4">
             <div className="relative hidden md:block">
@@ -159,8 +160,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
-        {children}
-      </main>
+        <main className="flex-1 overflow-y-auto">{children}</main>
+      </div>
     </div>
   );
 }
