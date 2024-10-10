@@ -41,7 +41,6 @@ export default function LoginPage() {
       if (user) {
         // In a real app, you'd verify the password here
         localStorage.setItem("currentUser", JSON.stringify(user));
-        toast.success("Login successful!");
         router.push("/");
       } else {
         toast.error("Login failed. Please check your credentials.");
