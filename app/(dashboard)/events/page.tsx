@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Calendar, momentLocalizer, Views, type View } from "react-big-calendar";
-import moment from "moment";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -14,17 +17,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { MapPinIcon, ClockIcon, UsersIcon, CalendarIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ClockIcon, MapPinIcon, UsersIcon } from "lucide-react";
+import moment from "moment";
+import { useCallback, useEffect, useState } from "react";
+import { Calendar, type View, momentLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { useRouter } from "next/navigation";
 
 const localizer = momentLocalizer(moment);
 
@@ -51,6 +51,14 @@ interface Event {
   registration_deadline: Date;
   status: string;
   sessions: EventSession[];
+}
+
+interface EventRegistration {
+  id: number;
+  event_id: number;
+  session_id: number;
+  user_id: number;
+  booking_date: Date;
 }
 
 const initialMockEvents: Event[] = [
@@ -123,6 +131,9 @@ export default function EventsPage() {
   });
   const [view, setView] = useState<ViewType>("month");
   const [date, setDate] = useState(new Date());
+  const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
+
+  const router = useRouter();
 
   useEffect(() => {
     const storedEvents = localStorage.getItem("events");
@@ -138,6 +149,19 @@ export default function EventsPage() {
     } else {
       setEvents(initialMockEvents);
       localStorage.setItem("events", JSON.stringify(initialMockEvents));
+    }
+
+    // Load registrations from localStorage
+    const storedRegistrations = localStorage.getItem("registrations");
+    if (storedRegistrations) {
+      setRegistrations(
+        JSON.parse(storedRegistrations, (key, value) => {
+          if (key === "booking_date") {
+            return new Date(value);
+          }
+          return value;
+        }),
+      );
     }
   }, []);
 
@@ -189,114 +213,137 @@ export default function EventsPage() {
     setView(newView);
   }, []);
 
+  const handleRegister = (eventId: number, sessionId: number) => {
+    const newRegistration: EventRegistration = {
+      id: Date.now(),
+      event_id: eventId,
+      session_id: sessionId,
+      user_id: 1, // Assuming a logged-in user with ID 1
+      booking_date: new Date(),
+    };
+
+    const updatedRegistrations = [...registrations, newRegistration];
+    setRegistrations(updatedRegistrations);
+    localStorage.setItem("registrations", JSON.stringify(updatedRegistrations));
+
+    // Navigate to the reservations page
+    router.push("/reservations");
+  };
+
+  const isSessionRegistered = (eventId: number, sessionId: number) => {
+    return registrations.some((reg) => reg.event_id === eventId && reg.session_id === sessionId);
+  };
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-blue-700">Research Events Calendar</h1>
-        <Dialog open={isCreateEventOpen} onOpenChange={setIsCreateEventOpen}>
-          <DialogTrigger asChild>
-            <Button>Create New Event</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Create New Event</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreateEvent} className="space-y-4">
-              <div>
-                <Label htmlFor="title">Event Title</Label>
-                <Input
-                  id="title"
-                  name="title"
-                  value={newEvent.title}
-                  onChange={handleInputChange}
-                  placeholder="Enter event title"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  name="description"
-                  value={newEvent.description}
-                  onChange={handleInputChange}
-                  placeholder="Enter event description"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+        <div className="space-x-4">
+          <Dialog open={isCreateEventOpen} onOpenChange={setIsCreateEventOpen}>
+            <DialogTrigger asChild>
+              <Button>Create New Event</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Create New Event</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleCreateEvent} className="space-y-4">
                 <div>
-                  <Label htmlFor="start_date">Start Date</Label>
+                  <Label htmlFor="title">Event Title</Label>
                   <Input
-                    id="start_date"
-                    name="start_date"
-                    type="date"
-                    value={moment(newEvent.start_date).format("YYYY-MM-DD")}
-                    onChange={handleDateChange}
+                    id="title"
+                    name="title"
+                    value={newEvent.title}
+                    onChange={handleInputChange}
+                    placeholder="Enter event title"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="end_date">End Date</Label>
+                  <Label htmlFor="description">Description</Label>
                   <Input
-                    id="end_date"
-                    name="end_date"
+                    id="description"
+                    name="description"
+                    value={newEvent.description}
+                    onChange={handleInputChange}
+                    placeholder="Enter event description"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="start_date">Start Date</Label>
+                    <Input
+                      id="start_date"
+                      name="start_date"
+                      type="date"
+                      value={moment(newEvent.start_date).format("YYYY-MM-DD")}
+                      onChange={handleDateChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end_date">End Date</Label>
+                    <Input
+                      id="end_date"
+                      name="end_date"
+                      type="date"
+                      value={moment(newEvent.end_date).format("YYYY-MM-DD")}
+                      onChange={handleDateChange}
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    name="location"
+                    value={newEvent.location}
+                    onChange={handleInputChange}
+                    placeholder="Enter event location"
+                    required
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="is_virtual"
+                    name="is_virtual"
+                    checked={newEvent.is_virtual}
+                    onCheckedChange={(checked) =>
+                      setNewEvent((prev) => ({ ...prev, is_virtual: checked as boolean }))
+                    }
+                  />
+                  <Label htmlFor="is_virtual">Virtual Event</Label>
+                </div>
+                <div>
+                  <Label htmlFor="max_attendees">Max Attendees</Label>
+                  <Input
+                    id="max_attendees"
+                    name="max_attendees"
+                    type="number"
+                    value={newEvent.max_attendees}
+                    onChange={handleInputChange}
+                    placeholder="Enter maximum number of attendees"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="registration_deadline">Registration Deadline</Label>
+                  <Input
+                    id="registration_deadline"
+                    name="registration_deadline"
                     type="date"
-                    value={moment(newEvent.end_date).format("YYYY-MM-DD")}
+                    value={moment(newEvent.registration_deadline).format("YYYY-MM-DD")}
                     onChange={handleDateChange}
                     required
                   />
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  name="location"
-                  value={newEvent.location}
-                  onChange={handleInputChange}
-                  placeholder="Enter event location"
-                  required
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="is_virtual"
-                  name="is_virtual"
-                  checked={newEvent.is_virtual}
-                  onCheckedChange={(checked) =>
-                    setNewEvent((prev) => ({ ...prev, is_virtual: checked as boolean }))
-                  }
-                />
-                <Label htmlFor="is_virtual">Virtual Event</Label>
-              </div>
-              <div>
-                <Label htmlFor="max_attendees">Max Attendees</Label>
-                <Input
-                  id="max_attendees"
-                  name="max_attendees"
-                  type="number"
-                  value={newEvent.max_attendees}
-                  onChange={handleInputChange}
-                  placeholder="Enter maximum number of attendees"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="registration_deadline">Registration Deadline</Label>
-                <Input
-                  id="registration_deadline"
-                  name="registration_deadline"
-                  type="date"
-                  value={moment(newEvent.registration_deadline).format("YYYY-MM-DD")}
-                  onChange={handleDateChange}
-                  required
-                />
-              </div>
-              <Button type="submit">Create Event</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <Button type="submit">Create Event</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card className="bg-white shadow-lg mb-6">
@@ -373,6 +420,18 @@ export default function EventsPage() {
                             <UsersIcon className="w-4 h-4 mr-1" />
                             Max Attendees: {session.max_attendees}
                           </div>
+                          {isSessionRegistered(selectedEvent.id, session.id) ? (
+                            <Badge className="mt-2" variant="secondary">
+                              Registered
+                            </Badge>
+                          ) : (
+                            <Button
+                              onClick={() => handleRegister(selectedEvent.id, session.id)}
+                              className="mt-2"
+                            >
+                              Register for Session
+                            </Button>
+                          )}
                         </div>
                       ))
                     ) : (

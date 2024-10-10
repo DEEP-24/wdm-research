@@ -1,37 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import PageHeading from "@/app/(dashboard)/_components/page-heading";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import type { User } from "@/types/user";
 import {
-  HomeIcon,
+  BellIcon,
+  BriefcaseIcon,
+  CalendarCheck2Icon,
   CalendarIcon,
+  ChevronDownIcon,
   DollarSignIcon,
   FileTextIcon,
-  MessageSquareIcon,
-  UserIcon,
-  BriefcaseIcon,
+  HomeIcon,
   MenuIcon,
-  XIcon,
-  BellIcon,
+  MessageSquareIcon,
   SearchIcon,
-  ChevronDownIcon,
+  UserIcon,
+  XIcon,
 } from "lucide-react";
-import type { User } from "@/types/user";
-import PageHeading from "@/app/(dashboard)/_components/page-heading";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const sidebarItems = [
   { icon: HomeIcon, label: "Dashboard", href: "/" },
   { icon: CalendarIcon, label: "Events", href: "/events" },
+  { icon: CalendarCheck2Icon, label: "Reservations", href: "/reservations" },
   { icon: DollarSignIcon, label: "Fundings", href: "/fundings" },
   { icon: FileTextIcon, label: "Grant Applications", href: "/grants" },
   { icon: MessageSquareIcon, label: "Discussions", href: "/discussions" },
