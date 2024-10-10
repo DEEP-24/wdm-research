@@ -103,7 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link key={item.href} href={item.href} passHref>
                   <Button
                     variant="ghost"
-                    className={`w-full justify-start text-white hover:bg-blue-600 hover:text-white transition-colors ${
+                    className={`w-full justify-start font-semibold text-white hover:bg-blue-600 hover:text-white transition-colors ${
                       pathname === item.href ? "bg-white/30" : ""
                     }`}
                   >
