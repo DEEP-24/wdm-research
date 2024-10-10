@@ -17,6 +17,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { User } from "@/types/user";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -44,6 +51,10 @@ export default function RegisterPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
+  };
+
+  const handleRoleChange = (value: string) => {
+    setFormData({ ...formData, role: value });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -231,13 +242,17 @@ export default function RegisterPage() {
               <Label htmlFor="role" className="text-xs sm:text-sm font-medium text-blue-800">
                 Role
               </Label>
-              <Input
-                id="role"
-                required
-                className="bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all text-sm"
-                value={formData.role}
-                onChange={handleInputChange}
-              />
+              <Select onValueChange={handleRoleChange} value={formData.role}>
+                <SelectTrigger className="bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all text-sm">
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="investor">Investor</SelectItem>
+                  <SelectItem value="organizer">Organizer</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="dob" className="text-xs sm:text-sm font-medium text-blue-800">

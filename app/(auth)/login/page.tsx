@@ -18,19 +18,60 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { User } from "@/types/user";
 
-const testUser: User = {
-  id: 1,
-  firstName: "John",
-  lastName: "Doe",
-  email: "testuser@app.com",
-  password: "password",
-  researchInterests: "Artificial Intelligence, Machine Learning",
-  expertise: "Computer Science",
-  role: "Research Scientist",
-  phoneNo: "+1234567890",
-  address: "123 Tech Street, Silicon Valley, CA 94000",
-  dob: "1985-01-01",
-};
+const testUsers: User[] = [
+  {
+    id: 1,
+    firstName: "John",
+    lastName: "Doe",
+    email: "admin@app.com",
+    password: "password",
+    researchInterests: "Artificial Intelligence, Machine Learning",
+    expertise: "Computer Science",
+    role: "admin",
+    phoneNo: "+1234567890",
+    address: "123 Tech Street, Silicon Valley, CA 94000",
+    dob: "1985-01-01",
+  },
+  {
+    id: 2,
+    firstName: "Jane",
+    lastName: "Smith",
+    email: "user@app.com",
+    password: "password",
+    researchInterests: "Biotechnology, Genetics",
+    expertise: "Biology",
+    role: "user",
+    phoneNo: "+1987654321",
+    address: "456 Science Ave, Boston, MA 02108",
+    dob: "1990-05-15",
+  },
+  {
+    id: 3,
+    firstName: "Alice",
+    lastName: "Johnson",
+    email: "investor@app.com",
+    password: "password",
+    researchInterests: "Renewable Energy, Sustainability",
+    expertise: "Environmental Science",
+    role: "investor",
+    phoneNo: "+1122334455",
+    address: "789 Green St, San Francisco, CA 94111",
+    dob: "1980-11-30",
+  },
+  {
+    id: 4,
+    firstName: "Bob",
+    lastName: "Williams",
+    email: "organizer@app.com",
+    password: "password",
+    researchInterests: "Nanotechnology, Materials Science",
+    expertise: "Engineering",
+    role: "organizer",
+    phoneNo: "+1567890123",
+    address: "321 Nano Blvd, Austin, TX 78701",
+    dob: "1988-07-22",
+  },
+];
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -41,14 +82,15 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if the test user already exists in localStorage
+    // Check if the test users already exist in localStorage
     const existingUsers: User[] = JSON.parse(localStorage.getItem("users") || "[]");
-    const testUserExists = existingUsers.some((user) => user.id === testUser.id);
+    const newUsers = testUsers.filter(
+      (testUser) => !existingUsers.some((user) => user.id === testUser.id),
+    );
 
-    if (!testUserExists) {
-      // Only add the test user if it doesn't exist
-      existingUsers.push(testUser);
-      localStorage.setItem("users", JSON.stringify(existingUsers));
+    if (newUsers.length > 0) {
+      // Add new test users if they don't exist
+      localStorage.setItem("users", JSON.stringify([...existingUsers, ...newUsers]));
     }
 
     // Check if there's a current user and redirect if found
@@ -133,8 +175,14 @@ export default function LoginPage() {
         </form>
         <div className="mt-4 p-3 bg-blue-100 rounded-md">
           <p className="text-sm text-blue-800 font-medium">Test User Credentials:</p>
-          <p className="text-sm text-blue-700">Email: testuser@app.com</p>
-          <p className="text-sm text-blue-700">Password: password</p>
+          {testUsers.map((user) => (
+            <div key={user.id} className="mt-2">
+              <p className="text-sm text-blue-700">
+                <strong>{user.role.charAt(0).toUpperCase() + user.role.slice(1)}:</strong>{" "}
+                {user.email} / password
+              </p>
+            </div>
+          ))}
         </div>
       </CardContent>
       <CardFooter>

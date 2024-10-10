@@ -14,6 +14,7 @@ import type { User } from "@/types/user";
 import {
   ArrowUpDownIcon,
   BadgeDollarSignIcon,
+  BriefcaseBusinessIcon,
   CalendarCheck2Icon,
   CalendarIcon,
   ChevronDownIcon,
@@ -33,19 +34,42 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const sidebarItems = [
-  { icon: HomeIcon, label: "Dashboard", href: "/" },
-  { icon: CalendarIcon, label: "Events", href: "/events" },
-  { icon: CalendarCheck2Icon, label: "Reservations", href: "/reservations" },
-  { icon: UserIcon, label: "Profile", href: "/profile" },
-  { icon: FolderKanbanIcon, label: "Projects", href: "/projects" },
-  { icon: ScanEyeIcon, label: "Review", href: "/review" },
-  { icon: ArrowUpDownIcon, label: "File Sharing", href: "/file-sharing" },
-  { icon: MessageCircleIcon, label: "Forums", href: "/forums" },
-  { icon: BadgeDollarSignIcon, label: "Funding Opportunities", href: "/funding-opportunities" },
-  { icon: FileTextIcon, label: "Grant Applications", href: "/grant-applications" },
-  { icon: HelpCircle, label: "Support", href: "/support" },
-];
+const roleBasedSidebarItems = {
+  user: [
+    { icon: HomeIcon, label: "Home", href: "/" },
+    { icon: CalendarIcon, label: "Events", href: "/events" },
+    { icon: CalendarCheck2Icon, label: "Reservations", href: "/reservations" },
+    { icon: ScanEyeIcon, label: "Review Projects", href: "/review" },
+    { icon: ArrowUpDownIcon, label: "File Sharing", href: "/file-sharing" },
+    { icon: MessageCircleIcon, label: "Forums", href: "/forums" },
+    { icon: FileTextIcon, label: "Grant Applications", href: "/grant-applications" },
+    { icon: HelpCircle, label: "Support", href: "/support" },
+  ],
+  admin: [
+    { icon: HomeIcon, label: "Home", href: "/" },
+    { icon: CalendarIcon, label: "Events", href: "/events" },
+    { icon: CalendarCheck2Icon, label: "Reservations", href: "/reservations" },
+    { icon: FolderKanbanIcon, label: "Projects", href: "/projects" },
+    { icon: ScanEyeIcon, label: "Review Projects", href: "/review" },
+    { icon: ArrowUpDownIcon, label: "File Sharing", href: "/file-sharing" },
+    { icon: MessageCircleIcon, label: "Forums", href: "/forums" },
+    { icon: BadgeDollarSignIcon, label: "Funding Opportunities", href: "/funding-opportunities" },
+    { icon: FileTextIcon, label: "Grant Applications", href: "/grant-applications" },
+    { icon: HelpCircle, label: "Support", href: "/support" },
+  ],
+  investor: [
+    { icon: HomeIcon, label: "Home", href: "/" },
+    { icon: BadgeDollarSignIcon, label: "Funding Opportunities", href: "/funding-opportunities" },
+    { icon: BriefcaseBusinessIcon, label: "Investments", href: "/investments" },
+    { icon: HelpCircle, label: "Support", href: "/support" },
+  ],
+  organizer: [
+    { icon: HomeIcon, label: "Home", href: "/" },
+    { icon: CalendarIcon, label: "Events", href: "/events" },
+    { icon: CalendarCheck2Icon, label: "Reservations", href: "/reservations" },
+    { icon: HelpCircle, label: "Support", href: "/support" },
+  ],
+};
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -72,6 +96,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!currentUser) {
     return null;
   }
+
+  const sidebarItems =
+    roleBasedSidebarItems[currentUser.role as keyof typeof roleBasedSidebarItems] ||
+    roleBasedSidebarItems.user;
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100 lg:flex-row">
