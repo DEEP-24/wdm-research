@@ -83,8 +83,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         } fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-blue-700 to-indigo-800 text-white transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto`}
       >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4">
-            <h1 className="text-2xl font-bold">ResearchSphere</h1>
+          <div className="flex items-center justify-between p-4 lg:justify-center">
+            <h1 className="text-2xl font-bold flex items-center bg-blue-800 rounded-lg px-4 py-2">
+              <span className="text-blue-300 mr-1">R</span>
+              <span className="text-white">Sphere</span>
+            </h1>
             <Button
               variant="ghost"
               size="icon"
@@ -94,7 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <XIcon className="h-6 w-6" />
             </Button>
           </div>
-          <ScrollArea className="flex-1 px-4">
+          <ScrollArea className="flex-1 px-4 mt-3">
             <nav className="space-y-2">
               {sidebarItems.map((item) => (
                 <Link key={item.href} href={item.href} passHref>
@@ -202,7 +205,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="space-y-4">
                   <div className="flex items-start">
                     <div className="bg-blue-100 rounded-lg p-2 max-w-[80%]">
-                      <span className="text-sm">👋 Hi! How can I assist you today?</span>
+                      <span className="text-sm">Hi! How can I assist you today?</span>
                     </div>
                   </div>
                 </div>
