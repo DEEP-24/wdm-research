@@ -68,39 +68,38 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+    <div className="container mx-auto px-4 py-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Link
           href="/chat"
-          className="bg-white p-4 rounded shadow hover:shadow-md transition-shadow"
+          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
         >
           <h2 className="text-xl font-semibold mb-2">Chat</h2>
-          <p>Connect with other researchers in real-time.</p>
+          <p className="text-gray-600">Connect with other researchers in real-time.</p>
         </Link>
         <Link
           href="/file-sharing"
-          className="bg-white p-4 rounded shadow hover:shadow-md transition-shadow"
+          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
         >
           <h2 className="text-xl font-semibold mb-2">File Sharing</h2>
-          <p>Upload and share documents with your peers.</p>
+          <p className="text-gray-600">Upload and share documents with your peers.</p>
         </Link>
         <Link
           href="/forums"
-          className="bg-white p-4 rounded shadow hover:shadow-md transition-shadow"
+          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
         >
           <h2 className="text-xl font-semibold mb-2">Discussion Forums</h2>
-          <p>Participate in topic-based discussions.</p>
+          <p className="text-gray-600">Participate in topic-based discussions.</p>
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Platform Features</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {platformFeatures.map((feature, index) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
                 <li key={index}>
@@ -112,12 +111,12 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Latest News & Updates</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {latestNews.map((news, index) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
                 <li key={index} className="flex justify-between items-center">
@@ -130,7 +129,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="shadow-sm mb-6">
         <CardHeader>
           <CardTitle>Quick Links</CardTitle>
         </CardHeader>
@@ -149,7 +148,7 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="shadow-sm mb-6">
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
         </CardHeader>
@@ -166,12 +165,12 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="shadow-sm">
         <CardHeader>
           <CardTitle>Popular Projects</CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             <li className="flex justify-between items-center">
               <span>Quantum Computing Research</span>
               <Button variant="ghost" size="sm">

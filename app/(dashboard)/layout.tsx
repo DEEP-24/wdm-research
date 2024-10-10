@@ -101,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Button
                     variant="ghost"
                     className={`w-full justify-start text-white hover:bg-blue-600 hover:text-white transition-colors ${
-                      pathname === item.href ? "bg-blue-600" : ""
+                      pathname === item.href ? "bg-white/30" : ""
                     }`}
                   >
                     <item.icon className="mr-2 h-4 w-4" />
