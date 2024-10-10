@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ClockIcon, MapPinIcon, UsersIcon } from "lucide-react";
+import { ClockIcon, MapPinIcon, UsersIcon, PlusIcon, TrashIcon } from "lucide-react";
 import moment from "moment";
 import { useCallback, useEffect, useState } from "react";
 import { Calendar, type View, momentLocalizer } from "react-big-calendar";
@@ -129,6 +129,16 @@ export default function EventsPage() {
     registration_deadline: new Date(),
     status: "Upcoming",
   });
+  const [newSessions, setNewSessions] = useState<Partial<EventSession>[]>([
+    {
+      title: "",
+      description: "",
+      start_time: new Date(),
+      end_time: new Date(),
+      location: "",
+      max_attendees: 0,
+    },
+  ]);
   const [view, setView] = useState<ViewType>("month");
   const [date, setDate] = useState(new Date());
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -171,7 +181,15 @@ export default function EventsPage() {
 
   const handleCreateEvent = (e: React.FormEvent) => {
     e.preventDefault();
-    const newEventWithId = { ...newEvent, id: Date.now(), sessions: [] } as Event;
+    const newEventWithId = {
+      ...newEvent,
+      id: Date.now(),
+      sessions: newSessions.map((session, index) => ({
+        ...session,
+        id: Date.now() + index,
+        event_id: Date.now(),
+      })),
+    } as Event;
     const updatedEvents = [...events, newEventWithId];
     setEvents(updatedEvents);
     localStorage.setItem("events", JSON.stringify(updatedEvents));
@@ -187,6 +205,16 @@ export default function EventsPage() {
       registration_deadline: new Date(),
       status: "Upcoming",
     });
+    setNewSessions([
+      {
+        title: "",
+        description: "",
+        start_time: new Date(),
+        end_time: new Date(),
+        location: "",
+        max_attendees: 0,
+      },
+    ]);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -203,6 +231,40 @@ export default function EventsPage() {
       ...prev,
       [name]: new Date(value),
     }));
+  };
+
+  const handleSessionInputChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type } = e.target;
+    setNewSessions((prev) =>
+      prev.map((session, i) =>
+        i === index ? { ...session, [name]: type === "number" ? Number(value) : value } : session,
+      ),
+    );
+  };
+
+  const handleSessionDateChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewSessions((prev) =>
+      prev.map((session, i) => (i === index ? { ...session, [name]: new Date(value) } : session)),
+    );
+  };
+
+  const addSession = () => {
+    setNewSessions((prev) => [
+      ...prev,
+      {
+        title: "",
+        description: "",
+        start_time: new Date(),
+        end_time: new Date(),
+        location: "",
+        max_attendees: 0,
+      },
+    ]);
+  };
+
+  const removeSession = (index: number) => {
+    setNewSessions((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleNavigate = useCallback((newDate: Date) => {
@@ -243,103 +305,290 @@ export default function EventsPage() {
             <DialogTrigger asChild>
               <Button>Create New Event</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[700px] bg-white">
               <DialogHeader>
-                <DialogTitle>Create New Event</DialogTitle>
+                <DialogTitle className="text-2xl font-bold text-blue-700">
+                  Create New Event
+                </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleCreateEvent} className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Event Title</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    value={newEvent.title}
-                    onChange={handleInputChange}
-                    placeholder="Enter event title"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Input
-                    id="description"
-                    name="description"
-                    value={newEvent.description}
-                    onChange={handleInputChange}
-                    placeholder="Enter event description"
-                    required
-                  />
-                </div>
+              <form onSubmit={handleCreateEvent} className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="start_date">Start Date</Label>
-                    <Input
-                      id="start_date"
-                      name="start_date"
-                      type="date"
-                      value={moment(newEvent.start_date).format("YYYY-MM-DD")}
-                      onChange={handleDateChange}
-                      required
-                    />
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="title" className="text-blue-600">
+                        Event Title
+                      </Label>
+                      <Input
+                        id="title"
+                        name="title"
+                        value={newEvent.title}
+                        onChange={handleInputChange}
+                        placeholder="Enter event title"
+                        required
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="description" className="text-blue-600">
+                        Description
+                      </Label>
+                      <Input
+                        id="description"
+                        name="description"
+                        value={newEvent.description}
+                        onChange={handleInputChange}
+                        placeholder="Enter event description"
+                        required
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="start_date" className="text-blue-600">
+                        Start Date
+                      </Label>
+                      <Input
+                        id="start_date"
+                        name="start_date"
+                        type="date"
+                        value={moment(newEvent.start_date).format("YYYY-MM-DD")}
+                        onChange={handleDateChange}
+                        required
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="end_date" className="text-blue-600">
+                        End Date
+                      </Label>
+                      <Input
+                        id="end_date"
+                        name="end_date"
+                        type="date"
+                        value={moment(newEvent.end_date).format("YYYY-MM-DD")}
+                        onChange={handleDateChange}
+                        required
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="end_date">End Date</Label>
-                    <Input
-                      id="end_date"
-                      name="end_date"
-                      type="date"
-                      value={moment(newEvent.end_date).format("YYYY-MM-DD")}
-                      onChange={handleDateChange}
-                      required
-                    />
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="location" className="text-blue-600">
+                        Location
+                      </Label>
+                      <Input
+                        id="location"
+                        name="location"
+                        value={newEvent.location}
+                        onChange={handleInputChange}
+                        placeholder="Enter event location"
+                        required
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="is_virtual"
+                        name="is_virtual"
+                        checked={newEvent.is_virtual}
+                        onCheckedChange={(checked) =>
+                          setNewEvent((prev) => ({ ...prev, is_virtual: checked as boolean }))
+                        }
+                        className="border-blue-400 text-blue-600"
+                      />
+                      <Label htmlFor="is_virtual" className="text-blue-600">
+                        Virtual Event
+                      </Label>
+                    </div>
+                    <div>
+                      <Label htmlFor="max_attendees" className="text-blue-600">
+                        Max Attendees
+                      </Label>
+                      <Input
+                        id="max_attendees"
+                        name="max_attendees"
+                        type="number"
+                        value={newEvent.max_attendees}
+                        onChange={handleInputChange}
+                        placeholder="Enter maximum number of attendees"
+                        required
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="registration_deadline" className="text-blue-600">
+                        Registration Deadline
+                      </Label>
+                      <Input
+                        id="registration_deadline"
+                        name="registration_deadline"
+                        type="date"
+                        value={moment(newEvent.registration_deadline).format("YYYY-MM-DD")}
+                        onChange={handleDateChange}
+                        required
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    value={newEvent.location}
-                    onChange={handleInputChange}
-                    placeholder="Enter event location"
-                    required
-                  />
+
+                <div className="border-t border-blue-200 pt-4 mt-4">
+                  <h3 className="text-lg font-semibold mb-2 text-blue-700">Event Sessions</h3>
+                  <Accordion type="single" collapsible className="w-full">
+                    {newSessions.map((session, index) => (
+                      <AccordionItem
+                        value={`session-${index}`}
+                        // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                        key={index}
+                        className="border-blue-200"
+                      >
+                        <AccordionTrigger className="text-blue-600 hover:text-blue-800">
+                          Session {index + 1}
+                        </AccordionTrigger>
+                        <AccordionContent className="bg-blue-50 p-4 rounded-lg">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor={`session_title_${index}`} className="text-blue-600">
+                                Session Title
+                              </Label>
+                              <Input
+                                id={`session_title_${index}`}
+                                name="title"
+                                value={session.title}
+                                onChange={(e) => handleSessionInputChange(index, e)}
+                                placeholder="Enter session title"
+                                required
+                                className="border-blue-200 focus:border-blue-400"
+                              />
+                            </div>
+                            <div>
+                              <Label
+                                htmlFor={`session_description_${index}`}
+                                className="text-blue-600"
+                              >
+                                Session Description
+                              </Label>
+                              <Input
+                                id={`session_description_${index}`}
+                                name="description"
+                                value={session.description}
+                                onChange={(e) => handleSessionInputChange(index, e)}
+                                placeholder="Enter session description"
+                                required
+                                className="border-blue-200 focus:border-blue-400"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 mt-2">
+                            <div>
+                              <Label
+                                htmlFor={`session_start_time_${index}`}
+                                className="text-blue-600"
+                              >
+                                Start Time
+                              </Label>
+                              <Input
+                                id={`session_start_time_${index}`}
+                                name="start_time"
+                                type="datetime-local"
+                                value={moment(session.start_time).format("YYYY-MM-DDTHH:mm")}
+                                onChange={(e) => handleSessionDateChange(index, e)}
+                                required
+                                className="border-blue-200 focus:border-blue-400"
+                              />
+                            </div>
+                            <div>
+                              <Label
+                                htmlFor={`session_end_time_${index}`}
+                                className="text-blue-600"
+                              >
+                                End Time
+                              </Label>
+                              <Input
+                                id={`session_end_time_${index}`}
+                                name="end_time"
+                                type="datetime-local"
+                                value={moment(session.end_time).format("YYYY-MM-DDTHH:mm")}
+                                onChange={(e) => handleSessionDateChange(index, e)}
+                                required
+                                className="border-blue-200 focus:border-blue-400"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 mt-2">
+                            <div>
+                              <Label
+                                htmlFor={`session_location_${index}`}
+                                className="text-blue-600"
+                              >
+                                Session Location
+                              </Label>
+                              <Input
+                                id={`session_location_${index}`}
+                                name="location"
+                                value={session.location}
+                                onChange={(e) => handleSessionInputChange(index, e)}
+                                placeholder="Enter session location"
+                                required
+                                className="border-blue-200 focus:border-blue-400"
+                              />
+                            </div>
+                            <div>
+                              <Label
+                                htmlFor={`session_max_attendees_${index}`}
+                                className="text-blue-600"
+                              >
+                                Max Attendees
+                              </Label>
+                              <Input
+                                id={`session_max_attendees_${index}`}
+                                name="max_attendees"
+                                type="number"
+                                value={session.max_attendees}
+                                onChange={(e) => handleSessionInputChange(index, e)}
+                                placeholder="Enter maximum number of attendees"
+                                required
+                                className="border-blue-200 focus:border-blue-400"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex justify-between mt-4">
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => removeSession(index)}
+                              disabled={newSessions.length === 1}
+                              className="bg-red-500 hover:bg-red-600 text-white"
+                            >
+                              <TrashIcon className="w-4 h-4 mr-2" /> Remove Session
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => {
+                                /* Implement save session logic */
+                              }}
+                              className="bg-green-500 hover:bg-green-600 text-white"
+                            >
+                              Save Session
+                            </Button>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                  <Button
+                    type="button"
+                    onClick={addSession}
+                    className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <PlusIcon className="w-4 h-4 mr-2" /> Add Another Session
+                  </Button>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="is_virtual"
-                    name="is_virtual"
-                    checked={newEvent.is_virtual}
-                    onCheckedChange={(checked) =>
-                      setNewEvent((prev) => ({ ...prev, is_virtual: checked as boolean }))
-                    }
-                  />
-                  <Label htmlFor="is_virtual">Virtual Event</Label>
-                </div>
-                <div>
-                  <Label htmlFor="max_attendees">Max Attendees</Label>
-                  <Input
-                    id="max_attendees"
-                    name="max_attendees"
-                    type="number"
-                    value={newEvent.max_attendees}
-                    onChange={handleInputChange}
-                    placeholder="Enter maximum number of attendees"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="registration_deadline">Registration Deadline</Label>
-                  <Input
-                    id="registration_deadline"
-                    name="registration_deadline"
-                    type="date"
-                    value={moment(newEvent.registration_deadline).format("YYYY-MM-DD")}
-                    onChange={handleDateChange}
-                    required
-                  />
-                </div>
-                <Button type="submit">Create Event</Button>
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                  Create Event with Sessions
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
