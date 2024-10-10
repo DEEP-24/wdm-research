@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,20 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { User } from "@/types/user";
 
+const testUser: User = {
+  id: 1,
+  firstName: "John",
+  lastName: "Doe",
+  email: "testuser@app.com",
+  password: "password",
+  researchInterests: "Artificial Intelligence, Machine Learning",
+  expertise: "Computer Science",
+  role: "Research Scientist",
+  phoneNo: "+1234567890",
+  address: "123 Tech Street, Silicon Valley, CA 94000",
+  dob: "1985-01-01",
+};
+
 export default function LoginPage() {
   const [formData, setFormData] = useState({
     email: "",
@@ -24,6 +39,14 @@ export default function LoginPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    // Always add or update the test user in localStorage
+    const existingUsers: User[] = JSON.parse(localStorage.getItem("users") || "[]");
+    const updatedUsers = existingUsers.filter((user) => user.id !== testUser.id);
+    updatedUsers.push(testUser);
+    localStorage.setItem("users", JSON.stringify(updatedUsers));
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -34,12 +57,13 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Simulating a login request
+      // Fetch users from localStorage
       const users: User[] = JSON.parse(localStorage.getItem("users") || "[]");
-      const user = users.find((u) => u.email === formData.email);
+      const user = users.find(
+        (u) => u.email === formData.email && u.password === formData.password,
+      );
 
       if (user) {
-        // In a real app, you'd verify the password here
         localStorage.setItem("currentUser", JSON.stringify(user));
         router.push("/");
       } else {

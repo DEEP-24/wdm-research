@@ -39,32 +39,11 @@ const budgetData = [
 
 const COLORS = ["#1E40AF", "#3B82F6", "#60A5FA", "#93C5FD", "#BFDBFE"];
 
-const testUser: User = {
-  id: 1,
-  firstName: "John",
-  lastName: "Doe",
-  email: "testuser@app.com",
-  password: "password",
-  researchInterests: "Artificial Intelligence, Machine Learning",
-  expertise: "Computer Science",
-  role: "Research Scientist",
-  phoneNo: "+1234567890",
-  address: "123 Tech Street, Silicon Valley, CA 94000",
-  dob: "1985-01-01",
-};
-
 export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    // Store the test user in localStorage if it doesn't exist
-    const existingUsers: User[] = JSON.parse(localStorage.getItem("users") || "[]");
-    if (!existingUsers.some((user) => user.id === testUser.id)) {
-      existingUsers.push(testUser);
-      localStorage.setItem("users", JSON.stringify(existingUsers));
-    }
-
     // Check for current user
     const userString = localStorage.getItem("currentUser");
     if (userString) {

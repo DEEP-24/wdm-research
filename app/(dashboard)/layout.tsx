@@ -115,7 +115,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <MenuIcon className="h-6 w-6" />
             </Button>
-            <PageHeading title="Dashboard" />
           </div>
           <div className="flex items-center space-x-4">
             <div className="relative hidden md:block">
