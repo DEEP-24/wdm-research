@@ -22,6 +22,7 @@ import {
   FolderKanbanIcon,
   HelpCircle,
   HomeIcon,
+  LogOutIcon,
   MenuIcon,
   MessageCircleIcon,
   ScanEyeIcon,
@@ -93,6 +94,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push("/login");
   };
 
+  const handleSidebarItemClick = () => {
+    if (window.innerWidth < 1024) {
+      // 1024px is the breakpoint for 'lg' in Tailwind
+      setSidebarOpen(false);
+    }
+  };
+
   if (!currentUser) {
     return null;
   }
@@ -133,6 +141,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     className={`w-full justify-start font-semibold text-white hover:bg-blue-600 hover:text-white transition-colors ${
                       pathname === item.href ? "bg-white/30" : ""
                     }`}
+                    onClick={handleSidebarItemClick}
                   >
                     <item.icon className="mr-2 h-4 w-4" />
                     {item.label}
@@ -193,7 +202,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <span>Profile</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={handleLogout}>
-                  <ArrowUpDownIcon className="mr-2 h-4 w-4" />
+                  <LogOutIcon className="mr-2 h-4 w-4" />
                   <span>Logout</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>

@@ -314,13 +314,13 @@ export default function EventsPage() {
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-blue-700">Events</h1>
-        <div className="space-x-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-blue-700">Events</h1>
+        <div className="w-full sm:w-auto">
           {currentUser?.role === "organizer" && (
             <Dialog open={isCreateEventOpen} onOpenChange={setIsCreateEventOpen}>
               <DialogTrigger asChild>
-                <Button>Create New Event</Button>
+                <Button className="w-full sm:w-auto">Create New Event</Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[700px] bg-white">
                 <DialogHeader>

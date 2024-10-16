@@ -95,8 +95,10 @@ export default function ReservationsPage() {
 
   return (
     <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-blue-700">My Reservations</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-blue-700 text-center sm:text-left">
+          My Reservations
+        </h1>
         <Button onClick={handleBackToEvents}>Back to Events</Button>
       </div>
 
