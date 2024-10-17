@@ -1,6 +1,6 @@
 "use client";
 
-import { FileIcon, UploadIcon } from "lucide-react";
+import { FileIcon, UploadIcon, Trash2Icon } from "lucide-react";
 import type React from "react";
 import { useState, useEffect } from "react";
 
@@ -68,6 +68,12 @@ const FileSharingPage: React.FC = () => {
     }
   };
 
+  const handleDeleteFile = (id: number) => {
+    const updatedFiles = files.filter((file) => file.id !== id);
+    setFiles(updatedFiles);
+    localStorage.setItem("sharedFiles", JSON.stringify(updatedFiles));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-4 sm:p-8">
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6 sm:p-8">
@@ -113,11 +119,21 @@ const FileSharingPage: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-blue-500">Uploaded by {file.uploadedBy}</p>
-                      <p className="text-xs text-blue-400">
-                        {new Date(file.uploadDate).toLocaleString()}
-                      </p>
+                    <div className="flex items-center">
+                      <div className="text-right mr-4">
+                        <p className="text-sm text-blue-500">Uploaded by {file.uploadedBy}</p>
+                        <p className="text-xs text-blue-400">
+                          {new Date(file.uploadDate).toLocaleString()}
+                        </p>
+                      </div>
+                      {/* biome-ignore lint/a11y/useButtonType: <explanation> */}
+                      <button
+                        onClick={() => handleDeleteFile(file.id)}
+                        className="text-red-500 hover:text-red-700 transition duration-300"
+                        aria-label="Delete file"
+                      >
+                        <Trash2Icon size={20} />
+                      </button>
                     </div>
                   </div>
                 </li>
