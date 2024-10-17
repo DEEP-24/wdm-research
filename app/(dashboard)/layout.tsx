@@ -76,6 +76,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [messages, setMessages] = useState([{ text: "Hello, how are you?", sender: "Adam" }]);
+  const [inputMessage, setInputMessage] = useState("");
   const router = useRouter();
   const pathname = usePathname();
 
@@ -108,6 +110,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const sidebarItems =
     roleBasedSidebarItems[currentUser.role as keyof typeof roleBasedSidebarItems] ||
     roleBasedSidebarItems.user;
+
+  const handleSendMessage = () => {
+    if (inputMessage.trim()) {
+      setMessages([...messages, { text: inputMessage, sender: "user" }]);
+      setInputMessage("");
+      // Here you would typically send the message to your backend
+      // and then add the response to the messages array
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100 lg:flex-row">
@@ -231,17 +242,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
-                  <div className="flex items-start">
-                    <div className="bg-blue-100 rounded-lg p-2 max-w-[80%]">
-                      <span className="text-sm">Hi! How can I assist you today?</span>
+                  {messages.map((message, index) => (
+                    <div
+                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                      key={index}
+                      className={`flex items-start ${
+                        message.sender === "user" ? "justify-end" : ""
+                      }`}
+                    >
+                      <div
+                        className={`rounded-lg p-2 max-w-[80%] ${
+                          message.sender === "user" ? "bg-blue-600 text-white" : "bg-blue-100"
+                        }`}
+                      >
+                        <span className="text-sm">{message.text}</span>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               </ScrollArea>
               <div className="p-4 border-t">
                 <div className="flex items-center">
-                  <Input className="flex-1 mr-2" placeholder="Type your message..." />
-                  <Button size="icon" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Input
+                    className="flex-1 mr-2"
+                    placeholder="Type your message..."
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                  />
+                  <Button
+                    size="icon"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={handleSendMessage}
+                  >
                     <SendIcon className="h-4 w-4" />
                   </Button>
                 </div>
