@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ArrowLeft } from "lucide-react";
 
 interface Forum {
   id: number;
@@ -68,6 +69,44 @@ const ForumsPage: React.FC = () => {
 
     if (storedPosts) {
       setPosts(JSON.parse(storedPosts));
+    } else {
+      // Preload some posts
+      const preloadedPosts: ForumPost[] = [
+        {
+          id: 1,
+          forumId: 1,
+          title: "Welcome to General Discussion",
+          content: "Feel free to start any conversation here!",
+          author: "Admin",
+          date: new Date(2023, 0, 1).toISOString(),
+        },
+        {
+          id: 2,
+          forumId: 2,
+          title: "Latest AI Developments",
+          content: "What are your thoughts on the recent advancements in AI?",
+          author: "TechEnthusiast",
+          date: new Date(2023, 1, 15).toISOString(),
+        },
+        {
+          id: 3,
+          forumId: 3,
+          title: "Best Movies of 2022",
+          content: "Let's discuss our favorite films from last year!",
+          author: "CinemaFan",
+          date: new Date(2023, 2, 1).toISOString(),
+        },
+        {
+          id: 4,
+          forumId: 1,
+          title: "Introducing Myself",
+          content: "Hi everyone! I'm new here and excited to join the community.",
+          author: "NewUser123",
+          date: new Date(2023, 3, 10).toISOString(),
+        },
+      ];
+      setPosts(preloadedPosts);
+      localStorage.setItem("forumPosts", JSON.stringify(preloadedPosts));
     }
 
     if (storedUser) {
@@ -185,9 +224,19 @@ const ForumsPage: React.FC = () => {
       ) : (
         <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-            <h2 className="text-2xl font-semibold text-blue-700 mb-4 sm:mb-0 break-words w-full sm:w-2/3">
-              {selectedForum.name}
-            </h2>
+            <div className="flex items-center w-full sm:w-2/3 mb-4 sm:mb-0">
+              <Button
+                onClick={handleLeaveForum}
+                variant="ghost"
+                className="mr-2 p-2"
+                aria-label="Back to forums"
+              >
+                <ArrowLeft className="h-6 w-6" />
+              </Button>
+              <h2 className="text-2xl font-semibold text-blue-700 break-words">
+                {selectedForum.name}
+              </h2>
+            </div>
             <Button onClick={handleLeaveForum} className="w-full sm:w-auto">
               Leave Forum
             </Button>
