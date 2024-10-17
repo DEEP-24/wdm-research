@@ -21,8 +21,11 @@ import {
   BriefcaseIcon,
   ArrowRightIcon,
   BadgeDollarSignIcon,
+  FileIcon,
+  MessageCircleIcon,
 } from "lucide-react";
 import type { User } from "@/types/user";
+import { Badge } from "@/components/ui/badge";
 
 const activityData = [
   { name: "Mon", value: 10 },
@@ -35,13 +38,30 @@ const activityData = [
 ];
 
 const platformFeatures = [
-  { title: "Event Management", description: "Organize and manage research events effortlessly." },
-  { title: "Funding Opportunities", description: "Explore and apply for various funding options." },
   {
-    title: "Collaboration Tools",
-    description: "Connect and collaborate with researchers worldwide.",
+    title: "File Sharing",
+    description: "Upload and share research documents securely.",
+    icon: FileIcon,
+    href: "/file-sharing",
   },
-  { title: "Resource Sharing", description: "Share and access valuable research resources." },
+  {
+    title: "Forums",
+    description: "Engage in discussions with researchers worldwide.",
+    icon: MessageCircleIcon,
+    href: "/forums",
+  },
+  {
+    title: "Event Management",
+    description: "View upcoming events and manage your reservations.",
+    icon: CalendarIcon,
+    href: "/events",
+  },
+  {
+    title: "Funding Opportunities",
+    description: "Explore and apply for various funding options.",
+    icon: BadgeDollarSignIcon,
+    href: "/funding-opportunities",
+  },
 ];
 
 const latestNews = [
@@ -128,24 +148,32 @@ function renderAdminUserDashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Platform Features</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {platformFeatures.map((feature, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                <li key={index}>
-                  <h3 className="font-semibold">{feature.title}</h3>
-                  <p className="text-sm text-gray-600">{feature.description}</p>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold mb-4">Platform Features</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {platformFeatures.map((feature, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+            <div key={index} className="bg-white rounded-xl shadow-md overflow-hidden">
+              <div className="p-5">
+                <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+                  <feature.icon className="h-6 w-6 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+                <p className="text-gray-600 mb-4">{feature.description}</p>
+                <Link
+                  href={feature.href}
+                  className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-300"
+                >
+                  Learn more
+                  <ArrowRightIcon className="ml-2 h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Latest News & Updates</CardTitle>
@@ -162,26 +190,26 @@ function renderAdminUserDashboard() {
             </ul>
           </CardContent>
         </Card>
-      </div>
 
-      <Card className="shadow-sm mb-6">
-        <CardHeader>
-          <CardTitle>Quick Links</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {quickLinks.adminUser.map((link, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-              <Link key={index} href={link.href}>
-                <Button variant="outline" className="w-full justify-start">
-                  <link.icon className="mr-2 h-4 w-4" />
-                  {link.title}
-                </Button>
-              </Link>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Quick Links</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {quickLinks.adminUser.map((link, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                <Link key={index} href={link.href}>
+                  <Button variant="outline" className="w-full justify-start">
+                    <link.icon className="mr-2 h-4 w-4" />
+                    {link.title}
+                  </Button>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="shadow-sm mb-6">
         <CardHeader>
