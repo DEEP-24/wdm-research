@@ -1,31 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { User } from "@/types/user";
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import {
-  CalendarIcon,
-  FileTextIcon,
-  UsersIcon,
-  BriefcaseIcon,
   ArrowRightIcon,
   BadgeDollarSignIcon,
+  BriefcaseIcon,
+  CalendarIcon,
+  ChevronRightIcon,
   FileIcon,
+  FileTextIcon,
   MessageCircleIcon,
+  UsersIcon,
 } from "lucide-react";
-import type { User } from "@/types/user";
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 const activityData = [
   { name: "Mon", value: 10 },
@@ -196,16 +197,11 @@ function renderAdminUserDashboard() {
             <CardTitle>Quick Links</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {quickLinks.adminUser.map((link, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                <Link key={index} href={link.href}>
-                  <Button variant="outline" className="w-full justify-start">
-                    <link.icon className="mr-2 h-4 w-4" />
-                    {link.title}
-                  </Button>
-                </Link>
-              ))}
+            <div className="flex flex-wrap gap-4">
+              <QuickLinkButton href="/events" icon={CalendarIcon} label="Upcoming Events" />
+              <QuickLinkButton href="/reservations" icon={FileTextIcon} label="My Reservations" />
+              <QuickLinkButton href="/projects" icon={BriefcaseIcon} label="Research Projects" />
+              <QuickLinkButton href="/profile" icon={UsersIcon} label="User Profile" />
             </div>
           </CardContent>
         </Card>
@@ -256,6 +252,23 @@ function renderAdminUserDashboard() {
         </CardContent>
       </Card>
     </>
+  );
+}
+
+interface QuickLinkButtonProps {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+}
+
+function QuickLinkButton({ href, icon: Icon, label }: QuickLinkButtonProps) {
+  return (
+    <Link href={href}>
+      <Button variant="outline" className="flex items-center gap-2 px-4 py-2 h-auto">
+        <Icon className="h-5 w-5" />
+        <span>{label}</span>
+      </Button>
+    </Link>
   );
 }
 
