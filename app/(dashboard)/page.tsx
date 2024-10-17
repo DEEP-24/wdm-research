@@ -90,6 +90,12 @@ const quickLinks = {
   ],
 };
 
+const projects = [
+  { name: "Quantum Computing Research", link: "https://research.ibm.com/quantum-computing" },
+  { name: "AI Ethics Study", link: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10097940" },
+  { name: "Climate Change Impact Analysis", link: "https://www.epa.gov/cira" },
+];
+
 export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const router = useRouter();
@@ -230,24 +236,17 @@ function renderAdminUserDashboard() {
         </CardHeader>
         <CardContent>
           <ul className="space-y-3">
-            <li className="flex justify-between items-center">
-              <span>Quantum Computing Research</span>
-              <Button variant="ghost" size="sm">
-                View <ArrowRightIcon className="ml-2 h-4 w-4" />
-              </Button>
-            </li>
-            <li className="flex justify-between items-center">
-              <span>AI Ethics Study</span>
-              <Button variant="ghost" size="sm">
-                View <ArrowRightIcon className="ml-2 h-4 w-4" />
-              </Button>
-            </li>
-            <li className="flex justify-between items-center">
-              <span>Climate Change Impact Analysis</span>
-              <Button variant="ghost" size="sm">
-                View <ArrowRightIcon className="ml-2 h-4 w-4" />
-              </Button>
-            </li>
+            {projects.map((project, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+              <li key={index} className="flex justify-between items-center">
+                <span>{project.name}</span>
+                <Link href={project.link} passHref target="_blank">
+                  <Button variant="ghost" size="sm">
+                    View <ArrowRightIcon className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </li>
+            ))}
           </ul>
         </CardContent>
       </Card>
