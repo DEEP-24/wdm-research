@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogOverlay,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -15,17 +21,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { EyeIcon, MessageCircleIcon } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@/types/user";
+import { EyeIcon, MessageCircleIcon, PaperclipIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+interface Attachment {
+  name: string;
+  type: string;
+}
 
 interface ProjectProposal {
   id: number;
@@ -34,6 +40,7 @@ interface ProjectProposal {
   description: string;
   status: "Submitted" | "Under Review" | "Approved" | "Rejected";
   submitted_at: string;
+  attachments: Attachment[];
 }
 
 interface ProposalReview {
@@ -114,6 +121,7 @@ export default function AllProjectsPage() {
                 <TableHead>Submitted By</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted At</TableHead>
+                <TableHead>Attachments</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -137,62 +145,27 @@ export default function AllProjectsPage() {
                   </TableCell>
                   <TableCell>{new Date(proposal.submitted_at).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-blue-600 hover:text-blue-800"
-                          onClick={() => {
-                            setSelectedProposal(proposal);
-                            setIsDialogOpen(true);
-                          }}
-                        >
-                          <EyeIcon className="w-4 h-4 mr-2" /> View Details
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[600px] bg-white">
-                        <DialogHeader>
-                          <DialogTitle className="text-xl font-semibold text-blue-700">
-                            {proposal.title}
-                          </DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <p>{proposal.description}</p>
-                          <div className="text-sm text-gray-600">
-                            Status: <Badge variant="secondary">{proposal.status}</Badge>
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            Submitted: {new Date(proposal.submitted_at).toLocaleString()}
-                          </div>
-                          <div className="space-y-2">
-                            <h3 className="font-semibold text-blue-700">Reviews:</h3>
-                            {getProposalReviews(proposal.id).map((review) => (
-                              <div key={review.id} className="bg-gray-100 p-3 rounded">
-                                <p className="text-sm">{review.feedback}</p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Reviewed on: {new Date(review.reviewed_at).toLocaleString()}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="newFeedback" className="text-blue-600">
-                              Add Feedback
-                            </Label>
-                            <Textarea
-                              id="newFeedback"
-                              value={newFeedback}
-                              onChange={(e) => setNewFeedback(e.target.value)}
-                              className="border-blue-200 focus:border-blue-400"
-                            />
-                            <Button onClick={handleAddFeedback} className="w-full">
-                              <MessageCircleIcon className="w-4 h-4 mr-2" /> Submit Feedback
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                    {proposal.attachments && proposal.attachments.length > 0 ? (
+                      <div className="flex items-center text-sm text-blue-600">
+                        <PaperclipIcon className="w-4 h-4 mr-2" />
+                        {proposal.attachments.length} file(s)
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">No attachments</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-blue-600 hover:text-blue-800"
+                      onClick={() => {
+                        setSelectedProposal(proposal);
+                        setIsDialogOpen(true);
+                      }}
+                    >
+                      <EyeIcon className="w-4 h-4 mr-2" /> View Details
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -200,6 +173,69 @@ export default function AllProjectsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Single Dialog component outside of the map function */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] bg-white">
+          {selectedProposal && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold text-blue-700">
+                  {selectedProposal.title}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p>{selectedProposal.description}</p>
+                <div className="text-sm text-gray-600">
+                  Status: <Badge variant="secondary">{selectedProposal.status}</Badge>
+                </div>
+                <div className="text-sm text-gray-600">
+                  Submitted: {new Date(selectedProposal.submitted_at).toLocaleString()}
+                </div>
+                {selectedProposal.attachments && selectedProposal.attachments.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-blue-700">Attachments:</h3>
+                    <ul className="list-disc pl-5">
+                      {selectedProposal.attachments.map((attachment, index) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                        <li key={index} className="text-sm text-blue-600">
+                          <PaperclipIcon className="w-4 h-4 inline mr-2" />
+                          {attachment.name} ({attachment.type})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-blue-700">Reviews:</h3>
+                  {getProposalReviews(selectedProposal.id).map((review) => (
+                    <div key={review.id} className="bg-gray-100 p-3 rounded">
+                      <p className="text-sm">{review.feedback}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Reviewed on: {new Date(review.reviewed_at).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newFeedback" className="text-blue-600">
+                    Add Feedback
+                  </Label>
+                  <Textarea
+                    id="newFeedback"
+                    value={newFeedback}
+                    onChange={(e) => setNewFeedback(e.target.value)}
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                  <Button onClick={handleAddFeedback} className="w-full">
+                    <MessageCircleIcon className="w-4 h-4 mr-2" /> Submit Feedback
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -22,10 +22,15 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@/types/user";
-import { EyeIcon, FileTextIcon, MessageCircleIcon, SendIcon } from "lucide-react";
+import { EyeIcon, MessageCircleIcon, PaperclipIcon, SendIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+
+interface Attachment {
+  name: string;
+  type: string;
+}
 
 interface ProjectProposal {
   id: number;
@@ -34,6 +39,7 @@ interface ProjectProposal {
   description: string;
   status: "Submitted" | "Under Review" | "Approved" | "Rejected";
   submitted_at: string;
+  attachments: Attachment[];
 }
 
 interface ProposalReview {
@@ -53,6 +59,13 @@ const mockProposals: ProjectProposal[] = [
       "Developing an advanced AI model to predict climate change impacts with higher accuracy.",
     status: "Under Review",
     submitted_at: "2023-06-15T10:30:00Z",
+    attachments: [
+      { name: "climate_model.pdf", type: "application/pdf" },
+      {
+        name: "data_sources.xlsx",
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      },
+    ],
   },
   {
     id: 2,
@@ -62,6 +75,30 @@ const mockProposals: ProjectProposal[] = [
       "Implementing quantum encryption techniques for ultra-secure communication channels.",
     status: "Approved",
     submitted_at: "2023-06-10T14:45:00Z",
+    attachments: [
+      { name: "quantum_encryption_whitepaper.pdf", type: "application/pdf" },
+      {
+        name: "prototype_results.docx",
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      },
+      {
+        name: "budget_estimate.xlsx",
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      },
+    ],
+  },
+  {
+    id: 3,
+    user_id: 3,
+    title: "Sustainable Urban Agriculture System",
+    description:
+      "Designing a scalable and sustainable urban agriculture system using vertical farming techniques.",
+    status: "Submitted",
+    submitted_at: "2023-06-20T09:15:00Z",
+    attachments: [
+      { name: "urban_farm_design.jpg", type: "image/jpeg" },
+      { name: "crop_yield_projections.pdf", type: "application/pdf" },
+    ],
   },
 ];
 
@@ -89,6 +126,7 @@ export default function ProjectsPage() {
   const [newProposal, setNewProposal] = useState<Partial<ProjectProposal>>({
     title: "",
     description: "",
+    attachments: [],
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<ProjectProposal | null>(null);
@@ -104,7 +142,8 @@ export default function ProjectsPage() {
 
     const storedProposals = localStorage.getItem("projectProposals");
     if (storedProposals) {
-      setProposals(JSON.parse(storedProposals));
+      const parsedProposals = JSON.parse(storedProposals);
+      setProposals(parsedProposals);
     } else {
       setProposals(mockProposals);
       localStorage.setItem("projectProposals", JSON.stringify(mockProposals));
@@ -124,6 +163,20 @@ export default function ProjectsPage() {
     setNewProposal((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const newAttachments = Array.from(files).map((file) => ({
+        name: file.name,
+        type: file.type,
+      }));
+      setNewProposal((prev) => ({
+        ...prev,
+        attachments: [...(prev.attachments || []), ...newAttachments],
+      }));
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (currentUser) {
@@ -133,11 +186,12 @@ export default function ProjectsPage() {
         user_id: currentUser.id,
         status: "Submitted",
         submitted_at: new Date().toISOString(),
+        attachments: newProposal.attachments || [], // Ensure attachments is always an array
       };
       const updatedProposals = [...proposals, proposal];
       setProposals(updatedProposals);
       localStorage.setItem("projectProposals", JSON.stringify(updatedProposals));
-      setNewProposal({ title: "", description: "" });
+      setNewProposal({ title: "", description: "", attachments: [] });
       setIsDialogOpen(false);
       toast.success("Project proposal submitted successfully!");
     }
@@ -210,6 +264,32 @@ export default function ProjectsPage() {
                   className="border-blue-200 focus:border-blue-400"
                 />
               </div>
+              <div>
+                <Label htmlFor="attachment" className="text-blue-600">
+                  Attachments
+                </Label>
+                <Input
+                  id="attachment"
+                  name="attachment"
+                  type="file"
+                  onChange={handleFileChange}
+                  className="border-blue-200 focus:border-blue-400"
+                  multiple
+                />
+              </div>
+              {newProposal.attachments && newProposal.attachments.length > 0 && (
+                <div>
+                  <Label className="text-blue-600">Selected Files:</Label>
+                  <ul className="list-disc pl-5">
+                    {newProposal.attachments.map((file, index) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                      <li key={index} className="text-sm">
+                        {file.name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                 Submit Proposal
               </Button>
@@ -230,6 +310,7 @@ export default function ProjectsPage() {
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted By</TableHead>
                 <TableHead>Submitted At</TableHead>
+                <TableHead>Attachments</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -252,6 +333,16 @@ export default function ProjectsPage() {
                   </TableCell>
                   <TableCell>User ID: {proposal.user_id}</TableCell>
                   <TableCell>{new Date(proposal.submitted_at).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    {proposal.attachments && proposal.attachments.length > 0 ? (
+                      <div className="flex items-center text-sm text-blue-600">
+                        <PaperclipIcon className="w-4 h-4 mr-2" />
+                        {proposal.attachments.length} file(s)
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">No attachments</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Button
                       variant="outline"
@@ -346,6 +437,20 @@ export default function ProjectsPage() {
               <div className="text-sm text-gray-600">
                 Submitted: {new Date(selectedProposal.submitted_at).toLocaleString()}
               </div>
+              {selectedProposal.attachments.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-blue-700">Attachments:</h3>
+                  <ul className="list-disc pl-5">
+                    {selectedProposal.attachments.map((attachment, index) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                      <li key={index} className="text-blue-600 flex items-center">
+                        <PaperclipIcon className="w-4 h-4 mr-2" />
+                        {attachment.name} ({attachment.type})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="space-y-2">
                 <h3 className="font-semibold text-blue-700">Reviews:</h3>
                 {getProposalReviews(selectedProposal.id).map((review) => (
