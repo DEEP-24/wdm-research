@@ -749,30 +749,30 @@ export default function EventsPage() {
       {selectedEvent && (
         <Card className="bg-white shadow-lg mt-6">
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-xl font-semibold text-blue-700">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
+              <CardTitle className="text-xl font-semibold text-blue-700 mb-2 sm:mb-0">
                 {selectedEvent.title}
               </CardTitle>
-              <div className="flex space-x-2">
-                {currentUser?.role === "organizer" && (
-                  <>
-                    <Button
-                      onClick={() => handleEditEvent(selectedEvent)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Pencil className="w-4 h-4 mr-2" /> Edit Event
-                    </Button>
-                    <Button
-                      onClick={() => handleDeleteEvent(selectedEvent.id)}
-                      variant="destructive"
-                      size="sm"
-                    >
-                      <TrashIcon className="w-4 h-4 mr-2" /> Delete Event
-                    </Button>
-                  </>
-                )}
-              </div>
+              {currentUser?.role === "organizer" && (
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
+                  <Button
+                    onClick={() => handleEditEvent(selectedEvent)}
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                  >
+                    <Pencil className="w-4 h-4 mr-2" /> Edit Event
+                  </Button>
+                  <Button
+                    onClick={() => handleDeleteEvent(selectedEvent.id)}
+                    variant="destructive"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                  >
+                    <TrashIcon className="w-4 h-4 mr-2" /> Delete Event
+                  </Button>
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent>

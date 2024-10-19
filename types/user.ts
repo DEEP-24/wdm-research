@@ -10,4 +10,8 @@ export interface User {
   phoneNo: string;
   address: string;
   dob: string;
+  linkedInURL?: string;
+  twitterURL?: string;
+  githubURL?: string;
+  papers?: string[];
 }

@@ -9,16 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@/types/user";
 import { toast } from "sonner";
+import { PlusCircle, Trash2 } from "lucide-react";
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const router = useRouter();
+  const [papers, setPapers] = useState<string[]>([]);
+  const [newPaper, setNewPaper] = useState("");
 
   useEffect(() => {
     const userString = localStorage.getItem("currentUser");
     if (userString) {
-      setUser(JSON.parse(userString));
+      const parsedUser = JSON.parse(userString);
+      setUser(parsedUser);
+      setPapers(parsedUser.papers || []);
     } else {
       router.push("/login");
     }
@@ -35,11 +40,15 @@ export default function ProfilePage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (user) {
-      localStorage.setItem("currentUser", JSON.stringify(user));
+      const updatedUser = {
+        ...user,
+        ...(user.role === "user" && { papers }),
+      };
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
 
       // Update user in the users array
       const users = JSON.parse(localStorage.getItem("users") || "[]");
-      const updatedUsers = users.map((u: User) => (u.id === user.id ? user : u));
+      const updatedUsers = users.map((u: User) => (u.id === updatedUser.id ? updatedUser : u));
       localStorage.setItem("users", JSON.stringify(updatedUsers));
 
       setIsEditing(false);
@@ -47,6 +56,17 @@ export default function ProfilePage() {
         description: "Your profile has been successfully updated.",
       });
     }
+  };
+
+  const addPaper = () => {
+    if (newPaper.trim()) {
+      setPapers([...papers, newPaper.trim()]);
+      setNewPaper("");
+    }
+  };
+
+  const removePaper = (index: number) => {
+    setPapers(papers.filter((_, i) => i !== index));
   };
 
   if (!user) {
@@ -127,6 +147,76 @@ export default function ProfilePage() {
                 disabled={!isEditing}
               />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="linkedInURL">LinkedIn URL</Label>
+                <Input
+                  id="linkedInURL"
+                  name="linkedInURL"
+                  value={user.linkedInURL || ""}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
+                />
+              </div>
+              <div>
+                <Label htmlFor="twitterURL">Twitter URL</Label>
+                <Input
+                  id="twitterURL"
+                  name="twitterURL"
+                  value={user.twitterURL || ""}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="githubURL">GitHub URL</Label>
+              <Input
+                id="githubURL"
+                name="githubURL"
+                value={user.githubURL || ""}
+                onChange={handleInputChange}
+                disabled={!isEditing}
+              />
+            </div>
+
+            {user.role === "user" && (
+              <div>
+                <Label>Research Papers and Articles</Label>
+                <ul className="list-disc pl-5 mb-2">
+                  {papers.map((paper, index) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                    <li key={index} className="flex items-center justify-between">
+                      <span>{paper}</span>
+                      {isEditing && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removePaper(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {isEditing && (
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      value={newPaper}
+                      onChange={(e) => setNewPaper(e.target.value)}
+                      placeholder="Add new paper or article"
+                    />
+                    <Button type="button" onClick={addPaper}>
+                      <PlusCircle className="h-4 w-4 mr-2" /> Add
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {isEditing ? (
               <div className="flex justify-end space-x-2">
                 <Button type="submit">Save Changes</Button>
