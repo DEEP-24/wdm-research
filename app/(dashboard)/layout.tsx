@@ -62,8 +62,12 @@ const roleBasedSidebarItems = {
   ],
   investor: [
     { icon: HomeIcon, label: "Home", href: "/" },
-    { icon: BadgeDollarSignIcon, label: "Funding Opportunities", href: "/funding-opportunities" },
-    { icon: BriefcaseBusinessIcon, label: "Investments", href: "/investments" },
+    {
+      icon: BriefcaseBusinessIcon,
+      label: "Investment Opportunities",
+      href: "/investment-opportunities",
+    },
+    { icon: BriefcaseBusinessIcon, label: "My Investments", href: "/investments" },
     { icon: HelpCircle, label: "Support", href: "/support" },
   ],
   organizer: [

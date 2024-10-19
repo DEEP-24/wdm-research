@@ -32,7 +32,6 @@ interface Project {
 }
 
 interface GrantApplication {
-  opportunity_id: number;
   project_id: string;
   project_title: string;
   project_description: string;
@@ -49,13 +48,12 @@ export default function GrantApplications() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [applications, setApplications] = useState<GrantApplication[]>([]);
   const [application, setApplication] = useState<GrantApplication>({
-    opportunity_id: 0,
     project_id: "",
     project_title: "",
     project_description: "",
     request_amount: 0,
     keywords: "",
-    status: "submitted", // Default status for new applications
+    status: "submitted",
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -122,7 +120,6 @@ export default function GrantApplications() {
     localStorage.setItem("grantApplications", JSON.stringify(newApplications));
     console.log("Submitting application:", newApplication);
     setApplication({
-      opportunity_id: 0,
       project_id: "",
       project_title: "",
       project_description: "",
@@ -145,17 +142,6 @@ export default function GrantApplications() {
               <DialogTitle>Create New Grant Application</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="opportunity_id">Opportunity ID</Label>
-                <Input
-                  id="opportunity_id"
-                  name="opportunity_id"
-                  type="number"
-                  value={application.opportunity_id}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
               <div>
                 <Label htmlFor="project_select">Select Project</Label>
                 <Select onValueChange={handleProjectSelect}>
@@ -320,12 +306,6 @@ export default function GrantApplications() {
                       </CardHeader>
                       <CardContent className="flex-grow flex flex-col justify-between p-4 space-y-3">
                         <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-gray-600">
-                              Opportunity ID:
-                            </span>
-                            <span className="text-sm font-semibold">{app.opportunity_id}</span>
-                          </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm font-medium text-gray-600">
                               Requested Amount:
