@@ -184,6 +184,78 @@ const initialMockEvents: Event[] = [
       },
     ],
   },
+  {
+    id: 6,
+    title: "Machine Learning Workshop",
+    description: "Hands-on workshop on advanced machine learning techniques.",
+    start_date: new Date(2024, 10, 5), // November 5, 2024
+    end_date: new Date(2024, 10, 6), // November 6, 2024
+    location: "Tech Hub, Downtown",
+    is_virtual: false,
+    max_attendees: 100,
+    registration_deadline: new Date(2024, 9, 25), // October 25, 2024
+    status: "Upcoming",
+    sessions: [
+      {
+        id: 1,
+        event_id: 6,
+        title: "Introduction to Deep Learning",
+        description: "Overview of deep learning architectures and applications",
+        start_time: new Date(2024, 10, 5, 9, 0), // November 5, 2024, 9:00 AM
+        end_time: new Date(2024, 10, 5, 12, 0), // November 5, 2024, 12:00 PM
+        location: "Main Hall, Tech Hub",
+        max_attendees: 100,
+      },
+    ],
+  },
+  {
+    id: 7,
+    title: "Cybersecurity Conference",
+    description: "Annual conference on the latest trends and threats in cybersecurity.",
+    start_date: new Date(2024, 10, 15), // November 15, 2024
+    end_date: new Date(2024, 10, 17), // November 17, 2024
+    location: "Virtual",
+    is_virtual: true,
+    max_attendees: 500,
+    registration_deadline: new Date(2024, 10, 10), // November 10, 2024
+    status: "Upcoming",
+    sessions: [
+      {
+        id: 1,
+        event_id: 7,
+        title: "Keynote: The Future of Cybersecurity",
+        description: "Opening keynote on emerging cybersecurity challenges",
+        start_time: new Date(2024, 10, 15, 10, 0), // November 15, 2024, 10:00 AM
+        end_time: new Date(2024, 10, 15, 11, 30), // November 15, 2024, 11:30 AM
+        location: "Virtual Main Hall",
+        max_attendees: 500,
+      },
+    ],
+  },
+  {
+    id: 8,
+    title: "Data Science Hackathon",
+    description: "48-hour hackathon focused on solving real-world data science problems.",
+    start_date: new Date(2024, 10, 22), // November 22, 2024
+    end_date: new Date(2024, 10, 24), // November 24, 2024
+    location: "Innovation Center",
+    is_virtual: false,
+    max_attendees: 200,
+    registration_deadline: new Date(2024, 10, 15), // November 15, 2024
+    status: "Open for Registration",
+    sessions: [
+      {
+        id: 1,
+        event_id: 8,
+        title: "Hackathon Kickoff",
+        description: "Introduction to the hackathon challenges and rules",
+        start_time: new Date(2024, 10, 22, 9, 0), // November 22, 2024, 9:00 AM
+        end_time: new Date(2024, 10, 22, 10, 0), // November 22, 2024, 10:00 AM
+        location: "Main Auditorium, Innovation Center",
+        max_attendees: 200,
+      },
+    ],
+  },
 ];
 
 type ViewType = "month" | "week" | "day";
