@@ -19,13 +19,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ClockIcon, MapPinIcon, UsersIcon, PlusIcon, TrashIcon, Pencil } from "lucide-react";
+import { ClockIcon, MapPinIcon, Pencil, PlusIcon, TrashIcon, UsersIcon } from "lucide-react";
 import moment from "moment";
 import { useCallback, useEffect, useState } from "react";
 import { Calendar, type View, momentLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { useRouter } from "next/navigation";
 import type { User } from "@/types/user";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 const localizer = momentLocalizer(moment);
@@ -403,6 +403,30 @@ export default function EventsPage() {
     toast.success("Event updated successfully");
   };
 
+  const handleDeleteEvent = (eventId: number) => {
+    const updatedEvents = events.filter((event) => event.id !== eventId);
+    setEvents(updatedEvents);
+    localStorage.setItem("events", JSON.stringify(updatedEvents));
+    toast.success("The event has been successfully removed.");
+    setSelectedEvent(null);
+  };
+
+  const handleDeleteSession = (eventId: number, sessionId: number) => {
+    const updatedEvents = events.map((event) => {
+      if (event.id === eventId) {
+        return {
+          ...event,
+          sessions: event.sessions.filter((session) => session.id !== sessionId),
+        };
+      }
+      return event;
+    });
+    setEvents(updatedEvents);
+    localStorage.setItem("events", JSON.stringify(updatedEvents));
+    toast.success("The session has been successfully removed.");
+    setSelectedEvent(updatedEvents.find((event) => event.id === eventId) || null);
+  };
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -729,11 +753,26 @@ export default function EventsPage() {
               <CardTitle className="text-xl font-semibold text-blue-700">
                 {selectedEvent.title}
               </CardTitle>
-              {currentUser?.role === "organizer" && (
-                <Button onClick={() => handleEditEvent(selectedEvent)} variant="outline" size="sm">
-                  <Pencil className="w-4 h-4 mr-2" /> Edit Event
-                </Button>
-              )}
+              <div className="flex space-x-2">
+                {currentUser?.role === "organizer" && (
+                  <>
+                    <Button
+                      onClick={() => handleEditEvent(selectedEvent)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Pencil className="w-4 h-4 mr-2" /> Edit Event
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteEvent(selectedEvent.id)}
+                      variant="destructive"
+                      size="sm"
+                    >
+                      <TrashIcon className="w-4 h-4 mr-2" /> Delete Event
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -770,33 +809,46 @@ export default function EventsPage() {
                     {selectedEvent.sessions && selectedEvent.sessions.length > 0 ? (
                       selectedEvent.sessions.map((session) => (
                         <div key={session.id} className="mb-4 p-3 bg-gray-100 rounded-lg">
-                          <h4 className="font-semibold">{session.title}</h4>
-                          <p className="text-sm text-gray-600">{session.description}</p>
-                          <div className="flex items-center text-sm text-gray-600 mt-1">
-                            <ClockIcon className="w-4 h-4 mr-1" />
-                            {moment(session.start_time).format("MMM D, YYYY HH:mm")} -
-                            {moment(session.end_time).format("HH:mm")}
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-semibold">{session.title}</h4>
+                              <p className="text-sm text-gray-600">{session.description}</p>
+                              <div className="flex items-center text-sm text-gray-600 mt-1">
+                                <ClockIcon className="w-4 h-4 mr-1" />
+                                {moment(session.start_time).format("MMM D, YYYY HH:mm")} -
+                                {moment(session.end_time).format("HH:mm")}
+                              </div>
+                              <div className="flex items-center text-sm text-gray-600">
+                                <MapPinIcon className="w-4 h-4 mr-1" />
+                                {session.location}
+                              </div>
+                              <div className="flex items-center text-sm text-gray-600">
+                                <UsersIcon className="w-4 h-4 mr-1" />
+                                Max Attendees: {session.max_attendees}
+                              </div>
+                              {isSessionRegistered(selectedEvent.id, session.id) ? (
+                                <Badge className="mt-2" variant="secondary">
+                                  Registered
+                                </Badge>
+                              ) : currentUser?.role === "user" ? (
+                                <Button
+                                  onClick={() => handleRegister(selectedEvent.id, session.id)}
+                                  className="mt-2"
+                                >
+                                  Register for Session
+                                </Button>
+                              ) : null}
+                            </div>
+                            {currentUser?.role === "organizer" && (
+                              <Button
+                                onClick={() => handleDeleteSession(selectedEvent.id, session.id)}
+                                variant="destructive"
+                                size="sm"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <MapPinIcon className="w-4 h-4 mr-1" />
-                            {session.location}
-                          </div>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <UsersIcon className="w-4 h-4 mr-1" />
-                            Max Attendees: {session.max_attendees}
-                          </div>
-                          {isSessionRegistered(selectedEvent.id, session.id) ? (
-                            <Badge className="mt-2" variant="secondary">
-                              Registered
-                            </Badge>
-                          ) : currentUser?.role === "user" ? (
-                            <Button
-                              onClick={() => handleRegister(selectedEvent.id, session.id)}
-                              className="mt-2"
-                            >
-                              Register for Session
-                            </Button>
-                          ) : null}
                         </div>
                       ))
                     ) : (
