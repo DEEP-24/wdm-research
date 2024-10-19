@@ -133,7 +133,10 @@ function renderAdminUserDashboard() {
     <>
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Link href="/" className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+        <Link
+          href="/researchers"
+          className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow"
+        >
           <h2 className="text-xl font-semibold mb-2">Chat</h2>
           <p className="text-gray-600">Connect with other researchers in real-time.</p>
         </Link>
