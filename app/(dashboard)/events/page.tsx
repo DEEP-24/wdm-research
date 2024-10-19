@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ClockIcon, MapPinIcon, UsersIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { ClockIcon, MapPinIcon, UsersIcon, PlusIcon, TrashIcon, Pencil } from "lucide-react";
 import moment from "moment";
 import { useCallback, useEffect, useState } from "react";
 import { Calendar, type View, momentLocalizer } from "react-big-calendar";
@@ -112,6 +112,78 @@ const initialMockEvents: Event[] = [
       },
     ],
   },
+  {
+    id: 3,
+    title: "Data Science Conference",
+    description: "Annual conference on the latest trends in data science and machine learning.",
+    start_date: new Date(2024, 9, 23), // October 23, 2024
+    end_date: new Date(2024, 9, 24), // October 24, 2024
+    location: "Tech Center, Downtown",
+    is_virtual: false,
+    max_attendees: 300,
+    registration_deadline: new Date(2024, 9, 15), // October 15, 2024
+    status: "Upcoming",
+    sessions: [
+      {
+        id: 1,
+        event_id: 3,
+        title: "Keynote: The Future of AI",
+        description: "Opening keynote on the future of artificial intelligence",
+        start_time: new Date(2024, 9, 23, 9, 0), // October 23, 2024, 9:00 AM
+        end_time: new Date(2024, 9, 23, 10, 30), // October 23, 2024, 10:30 AM
+        location: "Main Auditorium",
+        max_attendees: 300,
+      },
+    ],
+  },
+  {
+    id: 4,
+    title: "Cybersecurity Workshop",
+    description: "Hands-on workshop on the latest cybersecurity practices and tools.",
+    start_date: new Date(2024, 9, 28), // October 28, 2024
+    end_date: new Date(2024, 9, 29), // October 29, 2024
+    location: "Virtual",
+    is_virtual: true,
+    max_attendees: 100,
+    registration_deadline: new Date(2024, 9, 21), // October 21, 2024
+    status: "Open for Registration",
+    sessions: [
+      {
+        id: 1,
+        event_id: 4,
+        title: "Ethical Hacking Basics",
+        description: "Introduction to ethical hacking and penetration testing",
+        start_time: new Date(2024, 9, 28, 10, 0), // October 28, 2024, 10:00 AM
+        end_time: new Date(2024, 9, 28, 12, 0), // October 28, 2024, 12:00 PM
+        location: "Virtual Room 1",
+        max_attendees: 50,
+      },
+    ],
+  },
+  {
+    id: 5,
+    title: "Blockchain Technology Symposium",
+    description: "Exploring the latest developments in blockchain and cryptocurrency.",
+    start_date: new Date(2024, 9, 30), // October 30, 2024
+    end_date: new Date(2024, 9, 31), // October 31, 2024
+    location: "Financial District Conference Center",
+    is_virtual: false,
+    max_attendees: 200,
+    registration_deadline: new Date(2024, 9, 25), // October 25, 2024
+    status: "Upcoming",
+    sessions: [
+      {
+        id: 1,
+        event_id: 5,
+        title: "DeFi: Revolutionizing Finance",
+        description: "Panel discussion on Decentralized Finance and its impact",
+        start_time: new Date(2024, 9, 30, 11, 0), // October 30, 2024, 11:00 AM
+        end_time: new Date(2024, 9, 30, 12, 30), // October 30, 2024, 12:30 PM
+        location: "Main Hall",
+        max_attendees: 200,
+      },
+    ],
+  },
 ];
 
 type ViewType = "month" | "week" | "day";
@@ -145,6 +217,8 @@ export default function EventsPage() {
   const [date, setDate] = useState(new Date());
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isEditEventOpen, setIsEditEventOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   const router = useRouter();
 
@@ -310,6 +384,23 @@ export default function EventsPage() {
 
   const isSessionRegistered = (eventId: number, sessionId: number) => {
     return registrations.some((reg) => reg.event_id === eventId && reg.session_id === sessionId);
+  };
+
+  const handleEditEvent = (event: Event) => {
+    setEditingEvent(event);
+    setIsEditEventOpen(true);
+  };
+
+  const handleUpdateEvent = (updatedEvent: Event) => {
+    const updatedEvents = events.map((event) =>
+      event.id === updatedEvent.id ? updatedEvent : event,
+    );
+    setEvents(updatedEvents);
+    localStorage.setItem("events", JSON.stringify(updatedEvents));
+    setIsEditEventOpen(false);
+    setEditingEvent(null);
+    setSelectedEvent(updatedEvent);
+    toast.success("Event updated successfully");
   };
 
   return (
@@ -634,9 +725,16 @@ export default function EventsPage() {
       {selectedEvent && (
         <Card className="bg-white shadow-lg mt-6">
           <CardHeader>
-            <CardTitle className="text-xl font-semibold text-blue-700">
-              {selectedEvent.title}
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-xl font-semibold text-blue-700">
+                {selectedEvent.title}
+              </CardTitle>
+              {currentUser?.role === "organizer" && (
+                <Button onClick={() => handleEditEvent(selectedEvent)} variant="outline" size="sm">
+                  <Pencil className="w-4 h-4 mr-2" /> Edit Event
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -711,6 +809,269 @@ export default function EventsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Updated Dialog for editing events */}
+      <Dialog open={isEditEventOpen} onOpenChange={setIsEditEventOpen}>
+        <DialogContent className="sm:max-w-[700px] bg-white max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-blue-700">Edit Event</DialogTitle>
+          </DialogHeader>
+          {editingEvent && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleUpdateEvent(editingEvent);
+              }}
+              className="space-y-6"
+            >
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="edit-title" className="text-blue-600">
+                    Event Title
+                  </Label>
+                  <Input
+                    id="edit-title"
+                    value={editingEvent.title}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-description" className="text-blue-600">
+                    Description
+                  </Label>
+                  <Input
+                    id="edit-description"
+                    value={editingEvent.description}
+                    onChange={(e) =>
+                      setEditingEvent({ ...editingEvent, description: e.target.value })
+                    }
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-start-date" className="text-blue-600">
+                    Start Date
+                  </Label>
+                  <Input
+                    id="edit-start-date"
+                    type="date"
+                    value={moment(editingEvent.start_date).format("YYYY-MM-DD")}
+                    onChange={(e) =>
+                      setEditingEvent({ ...editingEvent, start_date: new Date(e.target.value) })
+                    }
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-end-date" className="text-blue-600">
+                    End Date
+                  </Label>
+                  <Input
+                    id="edit-end-date"
+                    type="date"
+                    value={moment(editingEvent.end_date).format("YYYY-MM-DD")}
+                    onChange={(e) =>
+                      setEditingEvent({ ...editingEvent, end_date: new Date(e.target.value) })
+                    }
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-location" className="text-blue-600">
+                    Location
+                  </Label>
+                  <Input
+                    id="edit-location"
+                    value={editingEvent.location}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, location: e.target.value })}
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-is-virtual"
+                    checked={editingEvent.is_virtual}
+                    onCheckedChange={(checked) =>
+                      setEditingEvent({ ...editingEvent, is_virtual: checked as boolean })
+                    }
+                    className="border-blue-400 text-blue-600"
+                  />
+                  <Label htmlFor="edit-is-virtual" className="text-blue-600">
+                    Virtual Event
+                  </Label>
+                </div>
+                <div>
+                  <Label htmlFor="edit-max-attendees" className="text-blue-600">
+                    Max Attendees
+                  </Label>
+                  <Input
+                    id="edit-max-attendees"
+                    type="number"
+                    value={editingEvent.max_attendees}
+                    onChange={(e) =>
+                      setEditingEvent({ ...editingEvent, max_attendees: Number(e.target.value) })
+                    }
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-registration-deadline" className="text-blue-600">
+                    Registration Deadline
+                  </Label>
+                  <Input
+                    id="edit-registration-deadline"
+                    type="date"
+                    value={moment(editingEvent.registration_deadline).format("YYYY-MM-DD")}
+                    onChange={(e) =>
+                      setEditingEvent({
+                        ...editingEvent,
+                        registration_deadline: new Date(e.target.value),
+                      })
+                    }
+                    className="border-blue-200 focus:border-blue-400"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-blue-200 pt-4 mt-4">
+                <h3 className="text-lg font-semibold mb-2 text-blue-700">Event Sessions</h3>
+                <Accordion type="single" collapsible className="w-full">
+                  {editingEvent.sessions.map((session, index) => (
+                    <AccordionItem value={`session-${index}`} key={session.id}>
+                      <AccordionTrigger className="text-blue-600 hover:text-blue-800">
+                        Session {index + 1}: {session.title}
+                      </AccordionTrigger>
+                      <AccordionContent className="space-y-4">
+                        <div>
+                          <Label htmlFor={`edit-session-title-${index}`} className="text-blue-600">
+                            Session Title
+                          </Label>
+                          <Input
+                            id={`edit-session-title-${index}`}
+                            value={session.title}
+                            onChange={(e) => {
+                              const updatedSessions = [...editingEvent.sessions];
+                              updatedSessions[index] = { ...session, title: e.target.value };
+                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
+                            }}
+                            className="border-blue-200 focus:border-blue-400"
+                          />
+                        </div>
+                        <div>
+                          <Label
+                            htmlFor={`edit-session-description-${index}`}
+                            className="text-blue-600"
+                          >
+                            Description
+                          </Label>
+                          <Input
+                            id={`edit-session-description-${index}`}
+                            value={session.description}
+                            onChange={(e) => {
+                              const updatedSessions = [...editingEvent.sessions];
+                              updatedSessions[index] = { ...session, description: e.target.value };
+                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
+                            }}
+                            className="border-blue-200 focus:border-blue-400"
+                          />
+                        </div>
+                        <div>
+                          <Label
+                            htmlFor={`edit-session-start-time-${index}`}
+                            className="text-blue-600"
+                          >
+                            Start Time
+                          </Label>
+                          <Input
+                            id={`edit-session-start-time-${index}`}
+                            type="datetime-local"
+                            value={moment(session.start_time).format("YYYY-MM-DDTHH:mm")}
+                            onChange={(e) => {
+                              const updatedSessions = [...editingEvent.sessions];
+                              updatedSessions[index] = {
+                                ...session,
+                                start_time: new Date(e.target.value),
+                              };
+                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
+                            }}
+                            className="border-blue-200 focus:border-blue-400"
+                          />
+                        </div>
+                        <div>
+                          <Label
+                            htmlFor={`edit-session-end-time-${index}`}
+                            className="text-blue-600"
+                          >
+                            End Time
+                          </Label>
+                          <Input
+                            id={`edit-session-end-time-${index}`}
+                            type="datetime-local"
+                            value={moment(session.end_time).format("YYYY-MM-DDTHH:mm")}
+                            onChange={(e) => {
+                              const updatedSessions = [...editingEvent.sessions];
+                              updatedSessions[index] = {
+                                ...session,
+                                end_time: new Date(e.target.value),
+                              };
+                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
+                            }}
+                            className="border-blue-200 focus:border-blue-400"
+                          />
+                        </div>
+                        <div>
+                          <Label
+                            htmlFor={`edit-session-location-${index}`}
+                            className="text-blue-600"
+                          >
+                            Location
+                          </Label>
+                          <Input
+                            id={`edit-session-location-${index}`}
+                            value={session.location}
+                            onChange={(e) => {
+                              const updatedSessions = [...editingEvent.sessions];
+                              updatedSessions[index] = { ...session, location: e.target.value };
+                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
+                            }}
+                            className="border-blue-200 focus:border-blue-400"
+                          />
+                        </div>
+                        <div>
+                          <Label
+                            htmlFor={`edit-session-max-attendees-${index}`}
+                            className="text-blue-600"
+                          >
+                            Max Attendees
+                          </Label>
+                          <Input
+                            id={`edit-session-max-attendees-${index}`}
+                            type="number"
+                            value={session.max_attendees}
+                            onChange={(e) => {
+                              const updatedSessions = [...editingEvent.sessions];
+                              updatedSessions[index] = {
+                                ...session,
+                                max_attendees: Number(e.target.value),
+                              };
+                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
+                            }}
+                            className="border-blue-200 focus:border-blue-400"
+                          />
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </div>
+              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                Update Event
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
