@@ -25,6 +25,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import moment from "moment";
 
 const activityData = [
   { name: "Mon", value: 10 },
@@ -94,8 +95,17 @@ const projects = [
   { name: "Climate Change Impact Analysis", link: "https://www.epa.gov/cira" },
 ];
 
+// Update the Event interface at the top of the file
+interface Event {
+  id: number;
+  title: string;
+  start_date: Date;
+  // ... other properties ...
+}
+
 export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -104,6 +114,17 @@ export default function DashboardPage() {
       setCurrentUser(JSON.parse(userString));
     } else {
       router.push("/login");
+    }
+
+    const storedEvents = localStorage.getItem("events");
+    if (storedEvents) {
+      const parsedEvents: Event[] = JSON.parse(storedEvents, (key, value) => {
+        if (key === "start_date" || key === "end_date" || key === "registration_deadline") {
+          return new Date(value);
+        }
+        return value;
+      });
+      setUpcomingEvents(parsedEvents);
     }
   }, [router]);
 
@@ -119,7 +140,7 @@ export default function DashboardPage() {
       case "investor":
         return renderInvestorDashboard();
       case "organizer":
-        return renderOrganizerDashboard();
+        return renderOrganizerDashboard(upcomingEvents);
       default:
         return renderAdminUserDashboard();
     }
@@ -332,54 +353,87 @@ function renderInvestorDashboard() {
   );
 }
 
-function renderOrganizerDashboard() {
+function renderOrganizerDashboard(upcomingEvents: Event[]) {
+  // Fetch reservations from localStorage
+  const storedReservations = localStorage.getItem("reservations");
+  const reservations = storedReservations ? JSON.parse(storedReservations) : [];
+  const totalReservations = reservations.length;
+
+  const stats = [
+    { title: "Total Events", value: Math.floor(Math.random() * 50) + 10 },
+    { title: "Active Participants", value: Math.floor(Math.random() * 1000) + 500 },
+    { title: "Venue Bookings", value: Math.floor(Math.random() * 20) + 5 },
+    { title: "Revenue (USD)", value: (Math.random() * 100000 + 50000).toFixed(2) },
+    { title: "Total Reservations", value: totalReservations },
+  ];
+
+  // Filter and sort upcoming events
+  const filteredUpcomingEvents = upcomingEvents
+    .filter((event) => moment(event.start_date).isAfter(moment()))
+    .sort((a, b) => moment(a.start_date).diff(moment(b.start_date)))
+    .slice(0, 5); // Show only the next 5 upcoming events
+
   return (
     <>
-      <h1 className="text-2xl font-bold mb-6">Organizer Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Organizer Dashboard</h1>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
+        {stats.map((stat, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+          <Card key={index} className="shadow-sm">
+            <CardHeader className="p-3 sm:p-4">
+              <CardTitle className="text-xs sm:text-sm font-medium text-gray-500">
+                {stat.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 sm:p-4">
+              <p className="text-lg sm:text-xl lg:text-2xl font-bold">{stat.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
         <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Upcoming Events</CardTitle>
+          <CardHeader className="p-3 sm:p-4">
+            <CardTitle className="text-base sm:text-lg font-semibold">Upcoming Events</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              <li className="flex justify-between items-center">
-                <span>AI Symposium</span>
-                <Button variant="outline" size="sm">
-                  Manage
-                </Button>
-              </li>
-              <li className="flex justify-between items-center">
-                <span>Biotech Conference</span>
-                <Button variant="outline" size="sm">
-                  Manage
-                </Button>
-              </li>
-              <li className="flex justify-between items-center">
-                <span>Climate Change Workshop</span>
-                <Button variant="outline" size="sm">
-                  Manage
-                </Button>
-              </li>
-            </ul>
+          <CardContent className="p-3 sm:p-4">
+            {filteredUpcomingEvents.length > 0 ? (
+              <ul className="space-y-2 sm:space-y-3">
+                {filteredUpcomingEvents.map((event: Event) => (
+                  <li
+                    key={event.id}
+                    className="flex justify-between items-center text-sm sm:text-base"
+                  >
+                    <span className="font-medium">{event.title}</span>
+                    <span className="text-xs sm:text-sm text-gray-500">
+                      {moment(event.start_date).format("MMM D, YYYY")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm sm:text-base">No upcoming events found.</p>
+            )}
           </CardContent>
         </Card>
 
         <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Venue Reservations</CardTitle>
+          <CardHeader className="p-3 sm:p-4">
+            <CardTitle className="text-base sm:text-lg font-semibold">Venue Reservations</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              <li className="flex justify-between items-center">
+          <CardContent className="p-3 sm:p-4">
+            <ul className="space-y-2 sm:space-y-3">
+              <li className="flex justify-between items-center text-sm sm:text-base">
                 <span>Main Auditorium</span>
                 <span className="text-green-600">Confirmed</span>
               </li>
-              <li className="flex justify-between items-center">
+              <li className="flex justify-between items-center text-sm sm:text-base">
                 <span>Conference Room A</span>
                 <span className="text-yellow-600">Pending</span>
               </li>
-              <li className="flex justify-between items-center">
+              <li className="flex justify-between items-center text-sm sm:text-base">
                 <span>Exhibition Hall</span>
                 <span className="text-green-600">Confirmed</span>
               </li>
@@ -388,16 +442,16 @@ function renderOrganizerDashboard() {
         </Card>
       </div>
 
-      <Card className="shadow-sm mb-6">
-        <CardHeader>
-          <CardTitle>Quick Links</CardTitle>
+      <Card className="shadow-sm mb-4 sm:mb-6">
+        <CardHeader className="p-3 sm:p-4">
+          <CardTitle className="text-base sm:text-lg font-semibold">Quick Links</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <CardContent className="p-3 sm:p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {quickLinks.organizer.map((link, index) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
               <Link key={index} href={link.href}>
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start text-sm sm:text-base">
                   <link.icon className="mr-2 h-4 w-4" />
                   {link.title}
                 </Button>
