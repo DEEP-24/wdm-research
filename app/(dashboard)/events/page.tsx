@@ -256,6 +256,79 @@ const initialMockEvents: Event[] = [
       },
     ],
   },
+  {
+    id: 9,
+    title: "Winter Tech Expo",
+    description: "Showcase of the latest winter sports technology and innovations.",
+    start_date: new Date(2024, 11, 5), // December 5, 2024
+    end_date: new Date(2024, 11, 7), // December 7, 2024
+    location: "Alpine Convention Center",
+    is_virtual: false,
+    max_attendees: 1000,
+    registration_deadline: new Date(2024, 10, 25), // November 25, 2024
+    status: "Upcoming",
+    sessions: [
+      {
+        id: 1,
+        event_id: 9,
+        title: "Opening Ceremony: Future of Winter Tech",
+        description: "Keynote speech on the future of winter sports technology",
+        start_time: new Date(2024, 11, 5, 10, 0), // December 5, 2024, 10:00 AM
+        end_time: new Date(2024, 11, 5, 11, 30), // December 5, 2024, 11:30 AM
+        location: "Main Hall, Alpine Convention Center",
+        max_attendees: 1000,
+      },
+    ],
+  },
+  {
+    id: 10,
+    title: "AI in Healthcare Conference",
+    description: "Exploring the latest applications of AI in medical diagnostics and treatment.",
+    start_date: new Date(2024, 11, 12), // December 12, 2024
+    end_date: new Date(2024, 11, 14), // December 14, 2024
+    location: "Virtual",
+    is_virtual: true,
+    max_attendees: 5000,
+    registration_deadline: new Date(2024, 11, 5), // December 5, 2024
+    status: "Upcoming",
+    sessions: [
+      {
+        id: 1,
+        event_id: 10,
+        title: "AI-Powered Diagnostics: Current State and Future Prospects",
+        description: "Panel discussion on the current and future role of AI in medical diagnostics",
+        start_time: new Date(2024, 11, 12, 9, 0), // December 12, 2024, 9:00 AM
+        end_time: new Date(2024, 11, 12, 10, 30), // December 12, 2024, 10:30 AM
+        location: "Virtual Main Hall",
+        max_attendees: 5000,
+      },
+    ],
+  },
+  {
+    id: 11,
+    title: "Holiday Tech Hackathon",
+    description:
+      "24-hour hackathon focused on creating tech solutions for holiday season challenges.",
+    start_date: new Date(2024, 11, 20), // December 20, 2024
+    end_date: new Date(2024, 11, 21), // December 21, 2024
+    location: "City Innovation Hub",
+    is_virtual: false,
+    max_attendees: 200,
+    registration_deadline: new Date(2024, 11, 15), // December 15, 2024
+    status: "Open for Registration",
+    sessions: [
+      {
+        id: 1,
+        event_id: 11,
+        title: "Hackathon Kickoff: Holiday Tech Challenges",
+        description: "Introduction to the hackathon themes and challenges",
+        start_time: new Date(2024, 11, 20, 9, 0), // December 20, 2024, 9:00 AM
+        end_time: new Date(2024, 11, 20, 10, 0), // December 20, 2024, 10:00 AM
+        location: "Main Hall, City Innovation Hub",
+        max_attendees: 200,
+      },
+    ],
+  },
 ];
 
 type ViewType = "month" | "week" | "day";
@@ -296,19 +369,34 @@ export default function EventsPage() {
 
   useEffect(() => {
     const storedEvents = localStorage.getItem("events");
+    let parsedEvents: Event[] = [];
+
     if (storedEvents) {
-      setEvents(
-        JSON.parse(storedEvents, (key, value) => {
-          if (key === "start_date" || key === "end_date" || key === "registration_deadline") {
-            return new Date(value);
-          }
-          return value;
-        }),
-      );
-    } else {
-      setEvents(initialMockEvents);
-      localStorage.setItem("events", JSON.stringify(initialMockEvents));
+      parsedEvents = JSON.parse(storedEvents, (key, value) => {
+        if (
+          key === "start_date" ||
+          key === "end_date" ||
+          key === "registration_deadline" ||
+          key === "start_time" ||
+          key === "end_time"
+        ) {
+          return new Date(value);
+        }
+        return value;
+      });
     }
+
+    // Merge stored events with initialMockEvents, avoiding duplicates
+    const mergedEvents = [...parsedEvents];
+    initialMockEvents.forEach((mockEvent) => {
+      if (!mergedEvents.some((event) => event.id === mockEvent.id)) {
+        mergedEvents.push(mockEvent);
+      }
+    });
+
+    console.log("Merged events:", mergedEvents);
+    setEvents(mergedEvents);
+    localStorage.setItem("events", JSON.stringify(mergedEvents));
 
     // Load registrations from localStorage
     const storedRegistrations = localStorage.getItem("registrations");
@@ -498,6 +586,8 @@ export default function EventsPage() {
     toast.success("The session has been successfully removed.");
     setSelectedEvent(updatedEvents.find((event) => event.id === eventId) || null);
   };
+
+  console.log("Current events in state:", events);
 
   return (
     <div className="container mx-auto p-4">
@@ -805,8 +895,8 @@ export default function EventsPage() {
           <Calendar
             localizer={localizer}
             events={events}
-            startAccessor="start_date"
-            endAccessor="end_date"
+            startAccessor={(event: Event) => new Date(event.start_date)}
+            endAccessor={(event: Event) => new Date(event.end_date)}
             style={{ height: 500 }}
             onSelectEvent={handleSelectEvent}
             view={view}

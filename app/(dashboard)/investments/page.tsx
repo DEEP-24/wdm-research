@@ -61,8 +61,6 @@ export default function InvestmentsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-blue-800 mb-8">My Investments</h1>
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <CardHeader>
