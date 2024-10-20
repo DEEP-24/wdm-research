@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { PaperclipIcon, EyeIcon, DownloadIcon } from "lucide-react";
 
 interface Project {
   id: string;
@@ -42,6 +43,7 @@ interface GrantApplication {
     firstName: string;
     lastName: string;
   };
+  attachments: { name: string; type: string }[];
 }
 
 export default function GrantApplications() {
@@ -54,8 +56,10 @@ export default function GrantApplications() {
     request_amount: 0,
     keywords: "",
     status: "submitted",
+    attachments: [],
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<GrantApplication | null>(null);
 
   useEffect(() => {
     const storedProjects = localStorage.getItem("projectProposals");
@@ -112,10 +116,24 @@ export default function GrantApplications() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const newAttachments = Array.from(files).map((file) => ({
+        name: file.name,
+        type: file.type,
+      }));
+      setApplication((prev) => ({
+        ...prev,
+        attachments: [...prev.attachments, ...newAttachments],
+      }));
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newApplication = { ...application, status: "submitted" };
-    const newApplications = [...applications, { ...newApplication, status: "submitted" as const }];
+    const newApplication = { ...application, status: "submitted" as const };
+    const newApplications = [...applications, newApplication];
     setApplications(newApplications);
     localStorage.setItem("grantApplications", JSON.stringify(newApplications));
     console.log("Submitting application:", newApplication);
@@ -126,6 +144,7 @@ export default function GrantApplications() {
       request_amount: 0,
       keywords: "",
       status: "submitted",
+      attachments: [],
     });
     setIsDialogOpen(false);
   };
@@ -200,6 +219,30 @@ export default function GrantApplications() {
                   required
                 />
               </div>
+              <div>
+                <Label htmlFor="attachment">Attachments</Label>
+                <Input
+                  id="attachment"
+                  name="attachment"
+                  type="file"
+                  onChange={handleFileChange}
+                  className="border-blue-200 focus:border-blue-400"
+                  multiple
+                />
+              </div>
+              {application.attachments.length > 0 && (
+                <div>
+                  <Label>Selected Files:</Label>
+                  <ul className="list-disc pl-5">
+                    {application.attachments.map((file, index) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                      <li key={index} className="text-sm">
+                        {file.name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <Button type="submit" className="w-full">
                 Submit Application
               </Button>
@@ -367,6 +410,27 @@ export default function GrantApplications() {
                             </div>
                           </div>
                         </div>
+                        <div className="space-y-2">
+                          {app.attachments && app.attachments.length > 0 && (
+                            <div>
+                              <span className="text-sm font-medium text-gray-600 block mb-1">
+                                Attachments:
+                              </span>
+                              <div className="flex items-center">
+                                <PaperclipIcon className="w-4 h-4 mr-2 text-blue-500" />
+                                <span className="text-sm">{app.attachments.length} file(s)</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-2"
+                          onClick={() => setSelectedApplication(app)}
+                        >
+                          <EyeIcon className="w-4 h-4 mr-2" /> View Details
+                        </Button>
                       </CardContent>
                     </Card>
                   ))}
@@ -376,6 +440,87 @@ export default function GrantApplications() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Application Details Dialog */}
+      <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
+        <DialogContent className="sm:max-w-[600px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-blue-700">
+              Application Details
+            </DialogTitle>
+          </DialogHeader>
+          {selectedApplication && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold text-blue-600">Project Title</h3>
+                <p>{selectedApplication.project_title}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-blue-600">Project Description</h3>
+                <p>{selectedApplication.project_description}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-blue-600">Requested Amount</h3>
+                <p>${selectedApplication.request_amount.toLocaleString()}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-blue-600">Keywords</h3>
+                <div className="flex flex-wrap gap-1">
+                  {selectedApplication.keywords.split(",").map((keyword, i) => (
+                    <Badge
+                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                      key={i}
+                      variant="secondary"
+                      className="text-xs bg-blue-100 text-blue-800"
+                    >
+                      {keyword.trim()}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-blue-600">Status</h3>
+                <Badge
+                  variant={
+                    selectedApplication.status === "accepted"
+                      ? "secondary"
+                      : selectedApplication.status === "rejected"
+                        ? "destructive"
+                        : "default"
+                  }
+                  className="capitalize"
+                >
+                  {selectedApplication.status}
+                </Badge>
+              </div>
+              {selectedApplication.reviewed_by && (
+                <div>
+                  <h3 className="font-semibold text-blue-600">Reviewed By</h3>
+                  <p>{`${selectedApplication.reviewed_by.firstName} ${selectedApplication.reviewed_by.lastName}`}</p>
+                </div>
+              )}
+              <div>
+                <h3 className="font-semibold text-blue-600">Attachments</h3>
+                {selectedApplication.attachments.length > 0 ? (
+                  <ul className="list-disc pl-5">
+                    {selectedApplication.attachments.map((file, index) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                      <li key={index} className="flex items-center justify-between">
+                        <span>{file.name}</span>
+                        <Button variant="ghost" size="sm" className="text-blue-600">
+                          <DownloadIcon className="w-4 h-4 mr-2" /> Download
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No attachments</p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
