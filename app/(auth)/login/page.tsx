@@ -1,10 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -13,65 +9,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
-import type { User } from "@/types/user";
+import { Eye, EyeOff } from "lucide-react";
 
-const testUsers: User[] = [
-  {
-    id: 1,
-    firstName: "John",
-    lastName: "Doe",
-    email: "admin@app.com",
-    password: "password",
-    researchInterests: "Artificial Intelligence, Machine Learning",
-    expertise: "Computer Science",
-    role: "admin",
-    phoneNo: "+1234567890",
-    address: "123 Tech Street, Silicon Valley, CA 94000",
-    dob: "1985-01-01",
-  },
-  {
-    id: 2,
-    firstName: "Jane",
-    lastName: "Smith",
-    email: "user@app.com",
-    password: "password",
-    researchInterests: "Biotechnology, Genetics",
-    expertise: "Biology",
-    role: "user",
-    phoneNo: "+1987654321",
-    address: "456 Science Ave, Boston, MA 02108",
-    dob: "1990-05-15",
-  },
-  {
-    id: 3,
-    firstName: "Alice",
-    lastName: "Johnson",
-    email: "investor@app.com",
-    password: "password",
-    researchInterests: "Renewable Energy, Sustainability",
-    expertise: "Environmental Science",
-    role: "investor",
-    phoneNo: "+1122334455",
-    address: "789 Green St, San Francisco, CA 94111",
-    dob: "1980-11-30",
-  },
-  {
-    id: 4,
-    firstName: "Bob",
-    lastName: "Williams",
-    email: "organizer@app.com",
-    password: "password",
-    researchInterests: "Nanotechnology, Materials Science",
-    expertise: "Engineering",
-    role: "organizer",
-    phoneNo: "+1567890123",
-    address: "321 Nano Blvd, Austin, TX 78701",
-    dob: "1988-07-22",
-  },
-];
+type FieldErrors = {
+  [key: string]: string[];
+};
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -79,123 +27,136 @@ export default function LoginPage() {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const router = useRouter();
-
-  useEffect(() => {
-    // Check if the test users already exist in localStorage
-    const existingUsers: User[] = JSON.parse(localStorage.getItem("users") || "[]");
-    const newUsers = testUsers.filter(
-      (testUser) => !existingUsers.some((user) => user.id === testUser.id),
-    );
-
-    if (newUsers.length > 0) {
-      // Add new test users if they don't exist
-      localStorage.setItem("users", JSON.stringify([...existingUsers, ...newUsers]));
-    }
-
-    // Check if there's a current user and redirect if found
-    const currentUser = localStorage.getItem("currentUser");
-    if (currentUser) {
-      router.push("/");
-    }
-  }, [router]);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
+    setFieldErrors((prev) => ({ ...prev, [e.target.id]: [] }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+    setFieldErrors({});
 
     try {
-      // Fetch users from localStorage
-      const users: User[] = JSON.parse(localStorage.getItem("users") || "[]");
-      const user = users.find(
-        (u) => u.email === formData.email && u.password === formData.password,
-      );
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
 
-      if (user) {
-        localStorage.setItem("currentUser", JSON.stringify(user));
-        router.push("/");
-      } else {
-        toast.error("Login failed. Please check your credentials.");
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.fieldErrors) {
+          setFieldErrors(data.fieldErrors);
+          return;
+        }
+        throw new Error(data.error || "Login failed");
       }
+
+      router.push("/");
+      router.refresh();
     } catch (error) {
       console.error("Login error:", error);
-      toast.error("An unexpected error occurred. Please try again.");
+      toast.error(error instanceof Error ? error.message : "An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Card className="w-full bg-white/80 backdrop-blur-sm shadow-lg border border-blue-200 max-w-md">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center text-blue-600">Welcome Back</CardTitle>
-        <CardDescription className="text-center text-blue-700">
-          Sign in to your account to continue your research journey
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium text-blue-800">
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              required
-              className="bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all"
-              value={formData.email}
-              onChange={handleInputChange}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-sm font-medium text-blue-800">
-              Password
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              className="bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all"
-              value={formData.password}
-              onChange={handleInputChange}
-            />
-          </div>
-          <Button
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 px-4 rounded-md transition-all shadow-md hover:shadow-lg"
-            type="submit"
-            disabled={isLoading}
-          >
-            {isLoading ? "Signing in..." : "Sign in"}
-          </Button>
-        </form>
-        <div className="mt-4 p-3 bg-blue-100 rounded-md">
-          <p className="text-sm text-blue-800 font-medium">Test User Credentials:</p>
-          {testUsers.map((user) => (
-            <div key={user.id} className="mt-2">
-              <p className="text-sm text-blue-700">
-                <strong>{user.role.charAt(0).toUpperCase() + user.role.slice(1)}:</strong>{" "}
-                {user.email} / password
-              </p>
+    <div className="flex items-center justify-center">
+      <Card className="w-full bg-white/80 backdrop-blur-sm shadow-lg border border-blue-200 max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center text-blue-600">
+            Welcome Back
+          </CardTitle>
+          <CardDescription className="text-center text-blue-700">
+            Sign in to your account to continue your research journey
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium text-blue-800">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                className="bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all"
+                value={formData.email}
+                onChange={handleInputChange}
+              />
+              {fieldErrors.email?.map((error, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                <p key={index} className="text-sm text-red-500 mt-1">
+                  {error}
+                </p>
+              ))}
             </div>
-          ))}
-        </div>
-      </CardContent>
-      <CardFooter>
-        <div className="text-sm text-center w-full text-blue-700">
-          Don't have an account?{" "}
-          <Link
-            href="/register"
-            className="text-blue-600 hover:text-indigo-600 font-semibold transition-colors"
-          >
-            Register
-          </Link>
-        </div>
-      </CardFooter>
-    </Card>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-medium text-blue-800">
+                Password
+              </Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  className="bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all pr-10"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {fieldErrors.password?.map((error, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                <p key={index} className="text-sm text-red-500 mt-1">
+                  {error}
+                </p>
+              ))}
+            </div>
+            {fieldErrors._form?.map((error, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+              <p key={index} className="text-sm text-red-500">
+                {error}
+              </p>
+            ))}
+            <Button
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 px-4 rounded-md transition-all shadow-md hover:shadow-lg"
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? "Signing in..." : "Sign in"}
+            </Button>
+          </form>
+        </CardContent>
+        <CardFooter>
+          <div className="text-sm text-center w-full text-blue-700">
+            Don't have an account?{" "}
+            <Link
+              href="/register"
+              className="text-blue-600 hover:text-indigo-600 font-semibold transition-colors"
+            >
+              Register
+            </Link>
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }

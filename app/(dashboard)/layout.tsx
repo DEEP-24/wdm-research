@@ -78,40 +78,69 @@ const roleBasedSidebarItems = {
   ],
 };
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState([{ text: "Hello, how are you?", sender: "Adam" }]);
   const [inputMessage, setInputMessage] = useState("");
-  const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    const userString = localStorage.getItem("currentUser");
-    if (userString) {
-      setCurrentUser(JSON.parse(userString));
-    } else {
-      router.push("/login");
-    }
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/user");
+        if (!response.ok) {
+          router.push("/login");
+          return;
+        }
+        const userData = await response.json();
+        setCurrentUser(userData);
+      } catch (error) {
+        console.error("Auth check failed:", error);
+        router.push("/login");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("currentUser");
-    setCurrentUser(null);
-    router.push("/login");
-  };
-
-  const handleSidebarItemClick = () => {
-    if (window.innerWidth < 1024) {
-      // 1024px is the breakpoint for 'lg' in Tailwind
-      setSidebarOpen(false);
-    }
-  };
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   if (!currentUser) {
     return null;
   }
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        setCurrentUser(null);
+        router.push("/login");
+      }
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  const handleSidebarItemClick = () => {
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  };
 
   const sidebarItems =
     roleBasedSidebarItems[currentUser.role as keyof typeof roleBasedSidebarItems] ||
@@ -121,8 +150,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (inputMessage.trim()) {
       setMessages([...messages, { text: inputMessage, sender: "user" }]);
       setInputMessage("");
-      // Here you would typically send the message to your backend
-      // and then add the response to the messages array
     }
   };
 
