@@ -78,6 +78,10 @@ const roleBasedSidebarItems = {
   ],
 };
 
+const isValidRole = (role: string): role is keyof typeof roleBasedSidebarItems => {
+  return ["user", "admin", "investor", "organizer"].includes(role);
+};
+
 export default function DashboardLayout({
   children,
 }: {
@@ -87,18 +91,25 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState([{ text: "Hello, how are you?", sender: "Adam" }]);
   const [inputMessage, setInputMessage] = useState("");
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     const checkAuth = async () => {
+      // biome-ignore lint/style/useBlockStatements: <explanation>
+      if (!mounted) return;
+
       try {
         const response = await fetch("/api/auth/user");
         if (!response.ok) {
-          router.push("/login");
-          return;
+          throw new Error("Auth failed");
         }
         const userData = await response.json();
         setCurrentUser(userData);
@@ -111,10 +122,22 @@ export default function DashboardLayout({
     };
 
     checkAuth();
-  }, [router]);
+  }, [mounted, router]);
+
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  if (!mounted) {
+    return null;
+  }
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-blue-600">Loading...</div>
+      </div>
+    );
   }
 
   if (!currentUser) {
@@ -130,6 +153,7 @@ export default function DashboardLayout({
       if (response.ok) {
         setCurrentUser(null);
         router.push("/login");
+        router.refresh();
       }
     } catch (error) {
       console.error("Logout failed:", error);
@@ -142,9 +166,21 @@ export default function DashboardLayout({
     }
   };
 
-  const sidebarItems =
-    roleBasedSidebarItems[currentUser.role as keyof typeof roleBasedSidebarItems] ||
-    roleBasedSidebarItems.user;
+  const getSidebarItems = () => {
+    if (!currentUser || !currentUser.role) {
+      return roleBasedSidebarItems.user;
+    }
+
+    const userRole = currentUser.role.toLowerCase() as keyof typeof roleBasedSidebarItems;
+
+    if (isValidRole(userRole)) {
+      return roleBasedSidebarItems[userRole];
+    }
+
+    return roleBasedSidebarItems.user;
+  };
+
+  const sidebarItems = currentUser ? getSidebarItems() : roleBasedSidebarItems.user;
 
   const handleSendMessage = () => {
     if (inputMessage.trim()) {

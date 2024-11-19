@@ -11,33 +11,42 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react";
-
-type FieldErrors = {
-  [key: string]: string[];
-};
+import { type LoginFormData, loginSchema } from "@/lib/schema";
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string[] }>({});
+  const [mounted, setMounted] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
-    setFieldErrors((prev) => ({ ...prev, [e.target.id]: [] }));
-  };
+  // Handle mounting state
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  // Don't render anything until mounted
+  if (!mounted) {
+    return null;
+  }
+
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setFieldErrors({});
 
@@ -47,17 +56,17 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(data),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
       if (!response.ok) {
-        if (data.fieldErrors) {
-          setFieldErrors(data.fieldErrors);
+        if (responseData.fieldErrors) {
+          setFieldErrors(responseData.fieldErrors);
           return;
         }
-        throw new Error(data.error || "Login failed");
+        throw new Error(responseData.error || "Login failed");
       }
 
       router.push("/");
@@ -82,22 +91,22 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-blue-800">
                 Email
               </Label>
               <Input
-                id="email"
+                {...register("email")}
                 type="email"
-                required
-                className="bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all"
-                value={formData.email}
-                onChange={handleInputChange}
+                className={cn(
+                  "bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all",
+                  (errors.email || fieldErrors.email) && "border-red-500",
+                )}
               />
-              {fieldErrors.email?.map((error, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                <p key={index} className="text-sm text-red-500 mt-1">
+              {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>}
+              {fieldErrors.email?.map((error) => (
+                <p key={`email-${error}`} className="text-sm text-red-500 mt-1">
                   {error}
                 </p>
               ))}
@@ -108,12 +117,12 @@ export default function LoginPage() {
               </Label>
               <div className="relative">
                 <Input
-                  id="password"
+                  {...register("password")}
                   type={showPassword ? "text" : "password"}
-                  required
-                  className="bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all pr-10"
-                  value={formData.password}
-                  onChange={handleInputChange}
+                  className={cn(
+                    "bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all pr-10",
+                    (errors.password || fieldErrors.password) && "border-red-500",
+                  )}
                 />
                 <button
                   type="button"
@@ -123,19 +132,15 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {fieldErrors.password?.map((error, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                <p key={index} className="text-sm text-red-500 mt-1">
+              {errors.password && (
+                <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>
+              )}
+              {fieldErrors.password?.map((error) => (
+                <p key={`password-${error}`} className="text-sm text-red-500 mt-1">
                   {error}
                 </p>
               ))}
             </div>
-            {fieldErrors._form?.map((error, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-              <p key={index} className="text-sm text-red-500">
-                {error}
-              </p>
-            ))}
             <Button
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 px-4 rounded-md transition-all shadow-md hover:shadow-lg"
               type="submit"

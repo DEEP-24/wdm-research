@@ -19,15 +19,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { UserRole } from "@prisma/client";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "sonner";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { type RegisterFormData, registerSchema } from "./schema";
+import { toast } from "sonner";
+import { type RegisterFormData, registerSchema } from "@/lib/schema";
 
 export default function RegisterPage() {
   const router = useRouter();

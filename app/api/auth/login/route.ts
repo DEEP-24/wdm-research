@@ -1,27 +1,27 @@
-import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { verify } from "argon2";
+import { loginSchema } from "@/lib/schema";
 import { cookies } from "next/headers";
-import { z } from "zod";
+import { NextResponse } from "next/server";
+import * as argon2 from "argon2";
 
-// Validation schema
-const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
-});
-
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
+    const body = await request.json();
+    const validatedFields = loginSchema.safeParse(body);
 
-    // Validate input
-    const result = loginSchema.safeParse(body);
-    if (!result.success) {
-      const fieldErrors = result.error.flatten().fieldErrors;
-      return NextResponse.json({ error: "Validation failed", fieldErrors }, { status: 400 });
+    if (!validatedFields.success) {
+      return NextResponse.json(
+        {
+          fieldErrors: {
+            email: ["Invalid email format"],
+            password: ["Invalid password format"],
+          },
+        },
+        { status: 400 },
+      );
     }
 
-    const { email, password } = body;
+    const { email, password } = validatedFields.data;
 
     const user = await db.user.findUnique({
       where: { email },
@@ -30,67 +30,33 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json(
         {
-          error: "Invalid credentials",
           fieldErrors: {
-            email: ["No account found with this email"],
+            email: ["Email does not exist"],
           },
         },
-        { status: 401 },
+        { status: 400 },
       );
     }
 
-    try {
-      const isPasswordValid = await verify(user.password, password);
+    const passwordsMatch = await argon2.verify(user.password, password);
 
-      if (!isPasswordValid) {
-        return NextResponse.json(
-          {
-            error: "Invalid credentials",
-            fieldErrors: {
-              password: ["Incorrect password"],
-            },
-          },
-          { status: 401 },
-        );
-      }
-    } catch (verifyError) {
-      console.error("Password verification error:", verifyError);
+    if (!passwordsMatch) {
       return NextResponse.json(
         {
-          error: "Invalid credentials",
           fieldErrors: {
-            password: ["Invalid password format"],
+            password: ["Incorrect password"],
           },
         },
-        { status: 401 },
+        { status: 400 },
       );
     }
 
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
+    // Set the cookie
+    cookies().set("user-token", user.id);
 
-    // Set cookie
-    cookies().set({
-      name: "user-token",
-      value: user.id,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
-    return NextResponse.json(userWithoutPassword);
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Login error:", error);
-    return NextResponse.json(
-      {
-        error: "An unexpected error occurred",
-        fieldErrors: {
-          _form: ["Something went wrong. Please try again later."],
-        },
-      },
-      { status: 500 },
-    );
+    console.error("[LOGIN_ERROR]", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
