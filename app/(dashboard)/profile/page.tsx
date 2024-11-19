@@ -174,74 +174,77 @@ export default function ProfilePage() {
                 disabled={!isEditing}
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="linkedInURL">LinkedIn URL</Label>
-                <Input
-                  id="linkedInURL"
-                  name="linkedInURL"
-                  value={user?.linkedInURL || ""}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                />
-              </div>
-              <div>
-                <Label htmlFor="twitterURL">Twitter URL</Label>
-                <Input
-                  id="twitterURL"
-                  name="twitterURL"
-                  value={user?.twitterURL || ""}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="githubURL">GitHub URL</Label>
-              <Input
-                id="githubURL"
-                name="githubURL"
-                value={user?.githubURL || ""}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-              />
-            </div>
 
             {user?.role === UserRole.USER && (
-              <div>
-                <Label>Research Papers and Articles</Label>
-                <ul className="list-disc pl-5 mb-2">
-                  {papers.map((paper, index) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                    <li key={index} className="flex items-center justify-between">
-                      <span>{paper}</span>
-                      {isEditing && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removePaper(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                {isEditing && (
-                  <div className="flex items-center space-x-2">
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="linkedInURL">LinkedIn URL</Label>
                     <Input
-                      value={newPaper}
-                      onChange={(e) => setNewPaper(e.target.value)}
-                      placeholder="Add new paper or article"
+                      id="linkedInURL"
+                      name="linkedInURL"
+                      value={user?.linkedInURL || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
                     />
-                    <Button type="button" onClick={addPaper}>
-                      <PlusCircle className="h-4 w-4 mr-2" /> Add
-                    </Button>
                   </div>
-                )}
-              </div>
+                  <div>
+                    <Label htmlFor="twitterURL">Twitter URL</Label>
+                    <Input
+                      id="twitterURL"
+                      name="twitterURL"
+                      value={user?.twitterURL || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="githubURL">GitHub URL</Label>
+                  <Input
+                    id="githubURL"
+                    name="githubURL"
+                    value={user?.githubURL || ""}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+
+                <div>
+                  <Label>Research Papers and Articles</Label>
+                  <ul className="list-disc pl-5 mb-2">
+                    {papers.map((paper, index) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                      <li key={index} className="flex items-center justify-between">
+                        <span>{paper}</span>
+                        {isEditing && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removePaper(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  {isEditing && (
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        value={newPaper}
+                        onChange={(e) => setNewPaper(e.target.value)}
+                        placeholder="Add new paper or article"
+                      />
+                      <Button type="button" onClick={addPaper}>
+                        <PlusCircle className="h-4 w-4 mr-2" /> Add
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
 
             {isEditing ? (

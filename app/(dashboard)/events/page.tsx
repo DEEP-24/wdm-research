@@ -24,440 +24,175 @@ import moment from "moment";
 import { useCallback, useEffect, useState } from "react";
 import { Calendar, type View, momentLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import type { Event, EventRegistration, EventSession } from "@/types/event";
 import type { User } from "@/types/user";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { UserRole } from "@prisma/client";
 
 const localizer = momentLocalizer(moment);
 
-interface EventSession {
-  id: number;
-  event_id: number;
-  title: string;
-  description: string;
-  start_time: Date;
-  end_time: Date;
-  location: string;
-  max_attendees: number;
-}
-
-interface Event {
-  id: number;
-  title: string;
-  description: string;
-  start_date: Date;
-  end_date: Date;
-  location: string;
-  is_virtual: boolean;
-  max_attendees: number;
-  registration_deadline: Date;
-  status: string;
-  sessions: EventSession[];
-}
-
-interface EventRegistration {
-  id: number;
-  event_id: number;
-  session_id: number;
-  user_id: number;
-  booking_date: Date;
-}
-
-const initialMockEvents: Event[] = [
-  {
-    id: 1,
-    title: "AI Research Symposium",
-    description: "Annual symposium on the latest AI research and applications.",
-    start_date: new Date(2024, 9, 15),
-    end_date: new Date(2024, 9, 17),
-    location: "Virtual",
-    is_virtual: true,
-    max_attendees: 500,
-    registration_deadline: new Date(2024, 9, 10),
-    status: "Upcoming",
-    sessions: [
-      {
-        id: 1,
-        event_id: 1,
-        title: "Opening Keynote",
-        description: "Welcome address and introduction to the symposium",
-        start_time: new Date(2024, 9, 15, 9, 0),
-        end_time: new Date(2024, 9, 15, 10, 0),
-        location: "Main Virtual Room",
-        max_attendees: 500,
-      },
-    ],
-  },
-  {
-    id: 2,
-    title: "Quantum Computing Workshop",
-    description: "Hands-on workshop exploring quantum computing principles.",
-    start_date: new Date(2024, 9, 20),
-    end_date: new Date(2024, 9, 20),
-    location: "Research Lab A, Building 3",
-    is_virtual: false,
-    max_attendees: 50,
-    registration_deadline: new Date(2024, 9, 18),
-    status: "Open for Registration",
-    sessions: [
-      {
-        id: 1,
-        event_id: 2,
-        title: "Introduction to Quantum Computing",
-        description: "Overview of quantum computing and its applications",
-        start_time: new Date(2024, 9, 20, 10, 0),
-        end_time: new Date(2024, 9, 20, 11, 0),
-        location: "Research Lab A, Building 3",
-        max_attendees: 50,
-      },
-    ],
-  },
-  {
-    id: 3,
-    title: "Data Science Conference",
-    description: "Annual conference on the latest trends in data science and machine learning.",
-    start_date: new Date(2024, 9, 23), // October 23, 2024
-    end_date: new Date(2024, 9, 24), // October 24, 2024
-    location: "Tech Center, Downtown",
-    is_virtual: false,
-    max_attendees: 300,
-    registration_deadline: new Date(2024, 9, 15), // October 15, 2024
-    status: "Upcoming",
-    sessions: [
-      {
-        id: 1,
-        event_id: 3,
-        title: "Keynote: The Future of AI",
-        description: "Opening keynote on the future of artificial intelligence",
-        start_time: new Date(2024, 9, 23, 9, 0), // October 23, 2024, 9:00 AM
-        end_time: new Date(2024, 9, 23, 10, 30), // October 23, 2024, 10:30 AM
-        location: "Main Auditorium",
-        max_attendees: 300,
-      },
-    ],
-  },
-  {
-    id: 4,
-    title: "Cybersecurity Workshop",
-    description: "Hands-on workshop on the latest cybersecurity practices and tools.",
-    start_date: new Date(2024, 9, 28), // October 28, 2024
-    end_date: new Date(2024, 9, 29), // October 29, 2024
-    location: "Virtual",
-    is_virtual: true,
-    max_attendees: 100,
-    registration_deadline: new Date(2024, 9, 21), // October 21, 2024
-    status: "Open for Registration",
-    sessions: [
-      {
-        id: 1,
-        event_id: 4,
-        title: "Ethical Hacking Basics",
-        description: "Introduction to ethical hacking and penetration testing",
-        start_time: new Date(2024, 9, 28, 10, 0), // October 28, 2024, 10:00 AM
-        end_time: new Date(2024, 9, 28, 12, 0), // October 28, 2024, 12:00 PM
-        location: "Virtual Room 1",
-        max_attendees: 50,
-      },
-    ],
-  },
-  {
-    id: 5,
-    title: "Blockchain Technology Symposium",
-    description: "Exploring the latest developments in blockchain and cryptocurrency.",
-    start_date: new Date(2024, 9, 30), // October 30, 2024
-    end_date: new Date(2024, 9, 31), // October 31, 2024
-    location: "Financial District Conference Center",
-    is_virtual: false,
-    max_attendees: 200,
-    registration_deadline: new Date(2024, 9, 25), // October 25, 2024
-    status: "Upcoming",
-    sessions: [
-      {
-        id: 1,
-        event_id: 5,
-        title: "DeFi: Revolutionizing Finance",
-        description: "Panel discussion on Decentralized Finance and its impact",
-        start_time: new Date(2024, 9, 30, 11, 0), // October 30, 2024, 11:00 AM
-        end_time: new Date(2024, 9, 30, 12, 30), // October 30, 2024, 12:30 PM
-        location: "Main Hall",
-        max_attendees: 200,
-      },
-    ],
-  },
-  {
-    id: 6,
-    title: "Machine Learning Workshop",
-    description: "Hands-on workshop on advanced machine learning techniques.",
-    start_date: new Date(2024, 10, 5), // November 5, 2024
-    end_date: new Date(2024, 10, 6), // November 6, 2024
-    location: "Tech Hub, Downtown",
-    is_virtual: false,
-    max_attendees: 100,
-    registration_deadline: new Date(2024, 9, 25), // October 25, 2024
-    status: "Upcoming",
-    sessions: [
-      {
-        id: 1,
-        event_id: 6,
-        title: "Introduction to Deep Learning",
-        description: "Overview of deep learning architectures and applications",
-        start_time: new Date(2024, 10, 5, 9, 0), // November 5, 2024, 9:00 AM
-        end_time: new Date(2024, 10, 5, 12, 0), // November 5, 2024, 12:00 PM
-        location: "Main Hall, Tech Hub",
-        max_attendees: 100,
-      },
-    ],
-  },
-  {
-    id: 7,
-    title: "Cybersecurity Conference",
-    description: "Annual conference on the latest trends and threats in cybersecurity.",
-    start_date: new Date(2024, 10, 15), // November 15, 2024
-    end_date: new Date(2024, 10, 17), // November 17, 2024
-    location: "Virtual",
-    is_virtual: true,
-    max_attendees: 500,
-    registration_deadline: new Date(2024, 10, 10), // November 10, 2024
-    status: "Upcoming",
-    sessions: [
-      {
-        id: 1,
-        event_id: 7,
-        title: "Keynote: The Future of Cybersecurity",
-        description: "Opening keynote on emerging cybersecurity challenges",
-        start_time: new Date(2024, 10, 15, 10, 0), // November 15, 2024, 10:00 AM
-        end_time: new Date(2024, 10, 15, 11, 30), // November 15, 2024, 11:30 AM
-        location: "Virtual Main Hall",
-        max_attendees: 500,
-      },
-    ],
-  },
-  {
-    id: 8,
-    title: "Data Science Hackathon",
-    description: "48-hour hackathon focused on solving real-world data science problems.",
-    start_date: new Date(2024, 10, 22), // November 22, 2024
-    end_date: new Date(2024, 10, 24), // November 24, 2024
-    location: "Innovation Center",
-    is_virtual: false,
-    max_attendees: 200,
-    registration_deadline: new Date(2024, 10, 15), // November 15, 2024
-    status: "Open for Registration",
-    sessions: [
-      {
-        id: 1,
-        event_id: 8,
-        title: "Hackathon Kickoff",
-        description: "Introduction to the hackathon challenges and rules",
-        start_time: new Date(2024, 10, 22, 9, 0), // November 22, 2024, 9:00 AM
-        end_time: new Date(2024, 10, 22, 10, 0), // November 22, 2024, 10:00 AM
-        location: "Main Auditorium, Innovation Center",
-        max_attendees: 200,
-      },
-    ],
-  },
-  {
-    id: 9,
-    title: "Winter Tech Expo",
-    description: "Showcase of the latest winter sports technology and innovations.",
-    start_date: new Date(2024, 11, 5), // December 5, 2024
-    end_date: new Date(2024, 11, 7), // December 7, 2024
-    location: "Alpine Convention Center",
-    is_virtual: false,
-    max_attendees: 1000,
-    registration_deadline: new Date(2024, 10, 25), // November 25, 2024
-    status: "Upcoming",
-    sessions: [
-      {
-        id: 1,
-        event_id: 9,
-        title: "Opening Ceremony: Future of Winter Tech",
-        description: "Keynote speech on the future of winter sports technology",
-        start_time: new Date(2024, 11, 5, 10, 0), // December 5, 2024, 10:00 AM
-        end_time: new Date(2024, 11, 5, 11, 30), // December 5, 2024, 11:30 AM
-        location: "Main Hall, Alpine Convention Center",
-        max_attendees: 1000,
-      },
-    ],
-  },
-  {
-    id: 10,
-    title: "AI in Healthcare Conference",
-    description: "Exploring the latest applications of AI in medical diagnostics and treatment.",
-    start_date: new Date(2024, 11, 12), // December 12, 2024
-    end_date: new Date(2024, 11, 14), // December 14, 2024
-    location: "Virtual",
-    is_virtual: true,
-    max_attendees: 5000,
-    registration_deadline: new Date(2024, 11, 5), // December 5, 2024
-    status: "Upcoming",
-    sessions: [
-      {
-        id: 1,
-        event_id: 10,
-        title: "AI-Powered Diagnostics: Current State and Future Prospects",
-        description: "Panel discussion on the current and future role of AI in medical diagnostics",
-        start_time: new Date(2024, 11, 12, 9, 0), // December 12, 2024, 9:00 AM
-        end_time: new Date(2024, 11, 12, 10, 30), // December 12, 2024, 10:30 AM
-        location: "Virtual Main Hall",
-        max_attendees: 5000,
-      },
-    ],
-  },
-  {
-    id: 11,
-    title: "Holiday Tech Hackathon",
-    description:
-      "24-hour hackathon focused on creating tech solutions for holiday season challenges.",
-    start_date: new Date(2024, 11, 20), // December 20, 2024
-    end_date: new Date(2024, 11, 21), // December 21, 2024
-    location: "City Innovation Hub",
-    is_virtual: false,
-    max_attendees: 200,
-    registration_deadline: new Date(2024, 11, 15), // December 15, 2024
-    status: "Open for Registration",
-    sessions: [
-      {
-        id: 1,
-        event_id: 11,
-        title: "Hackathon Kickoff: Holiday Tech Challenges",
-        description: "Introduction to the hackathon themes and challenges",
-        start_time: new Date(2024, 11, 20, 9, 0), // December 20, 2024, 9:00 AM
-        end_time: new Date(2024, 11, 20, 10, 0), // December 20, 2024, 10:00 AM
-        location: "Main Hall, City Innovation Hub",
-        max_attendees: 200,
-      },
-    ],
-  },
-];
-
 type ViewType = "month" | "week" | "day";
+
+type EventFormValues = {
+  title: string;
+  description: string;
+  startDate: Date;
+  endDate: Date;
+  location: string;
+  isVirtual: boolean;
+  maxAttendees: number;
+  registrationDeadline: Date;
+  status: string;
+};
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
-  const [newEvent, setNewEvent] = useState<Partial<Event>>({
+  const [newEvent, setNewEvent] = useState<EventFormValues>({
     title: "",
     description: "",
-    start_date: new Date(),
-    end_date: new Date(),
+    startDate: new Date(),
+    endDate: new Date(),
     location: "",
-    is_virtual: false,
-    max_attendees: 0,
-    registration_deadline: new Date(),
+    isVirtual: false,
+    maxAttendees: 0,
+    registrationDeadline: new Date(),
     status: "Upcoming",
   });
   const [newSessions, setNewSessions] = useState<Partial<EventSession>[]>([
     {
       title: "",
       description: "",
-      start_time: new Date(),
-      end_time: new Date(),
+      startTime: new Date(),
+      endTime: new Date(),
       location: "",
-      max_attendees: 0,
+      maxAttendees: 0,
     },
   ]);
   const [view, setView] = useState<ViewType>("month");
   const [date, setDate] = useState(new Date());
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isEditEventOpen, setIsEditEventOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   const router = useRouter();
 
+  // Fetch current user
   useEffect(() => {
-    const storedEvents = localStorage.getItem("events");
-    let parsedEvents: Event[] = [];
-
-    if (storedEvents) {
-      parsedEvents = JSON.parse(storedEvents, (key, value) => {
-        if (
-          key === "start_date" ||
-          key === "end_date" ||
-          key === "registration_deadline" ||
-          key === "start_time" ||
-          key === "end_time"
-        ) {
-          return new Date(value);
+    const fetchUser = async () => {
+      try {
+        const response = await fetch("/api/user/profile");
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
         }
-        return value;
-      });
-    }
-
-    // Merge stored events with initialMockEvents, avoiding duplicates
-    const mergedEvents = [...parsedEvents];
-    initialMockEvents.forEach((mockEvent) => {
-      if (!mergedEvents.some((event) => event.id === mockEvent.id)) {
-        mergedEvents.push(mockEvent);
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
       }
-    });
+    };
 
-    console.log("Merged events:", mergedEvents);
-    setEvents(mergedEvents);
-    localStorage.setItem("events", JSON.stringify(mergedEvents));
-
-    // Load registrations from localStorage
-    const storedRegistrations = localStorage.getItem("registrations");
-    if (storedRegistrations) {
-      setRegistrations(
-        JSON.parse(storedRegistrations, (key, value) => {
-          if (key === "booking_date") {
-            return new Date(value);
-          }
-          return value;
-        }),
-      );
-    }
-
-    // Load current user from localStorage
-    const storedUser = localStorage.getItem("currentUser");
-    if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
-    }
+    fetchUser();
   }, []);
+
+  // Fetch events
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch("/api/events");
+        if (!response.ok) {
+          throw new Error("Failed to fetch events");
+        }
+        const data = await response.json();
+        setEvents(data);
+      } catch (error) {
+        console.error("Failed to fetch events:", error);
+        toast.error("Failed to fetch events");
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  // Fetch registrations for current user
+  useEffect(() => {
+    const fetchRegistrations = async () => {
+      if (!user) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/events/register?userId=${user.id}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch registrations");
+        }
+        const data = await response.json();
+        setRegistrations(data);
+      } catch (error) {
+        console.error("Failed to fetch registrations:", error);
+      }
+    };
+
+    if (user) {
+      fetchRegistrations();
+    }
+  }, [user]);
 
   const handleSelectEvent = (event: Event) => {
     setSelectedEvent(event);
   };
 
-  const handleCreateEvent = (e: React.FormEvent) => {
+  const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newEventWithId = {
-      ...newEvent,
-      id: Date.now(),
-      sessions: newSessions.map((session, index) => ({
-        ...session,
-        id: Date.now() + index,
-        event_id: Date.now(),
-      })),
-    } as Event;
-    const updatedEvents = [...events, newEventWithId];
-    setEvents(updatedEvents);
-    localStorage.setItem("events", JSON.stringify(updatedEvents));
-    setIsCreateEventOpen(false);
-    setNewEvent({
-      title: "",
-      description: "",
-      start_date: new Date(),
-      end_date: new Date(),
-      location: "",
-      is_virtual: false,
-      max_attendees: 0,
-      registration_deadline: new Date(),
-      status: "Upcoming",
-    });
-    setNewSessions([
-      {
+    try {
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...newEvent,
+          sessions: newSessions,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create event");
+      }
+
+      const createdEvent = await response.json();
+      setEvents([...events, createdEvent]);
+      setIsCreateEventOpen(false);
+      toast.success("Event created successfully");
+
+      // Reset form
+      setNewEvent({
         title: "",
         description: "",
-        start_time: new Date(),
-        end_time: new Date(),
+        startDate: new Date(),
+        endDate: new Date(),
         location: "",
-        max_attendees: 0,
-      },
-    ]);
+        isVirtual: false,
+        maxAttendees: 0,
+        registrationDeadline: new Date(),
+        status: "Upcoming",
+      });
+      setNewSessions([
+        {
+          title: "",
+          description: "",
+          startTime: new Date(),
+          endTime: new Date(),
+          location: "",
+          maxAttendees: 0,
+        },
+      ]);
+    } catch (error) {
+      console.error("Failed to create event:", error);
+      toast.error("Failed to create event");
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -498,10 +233,10 @@ export default function EventsPage() {
       {
         title: "",
         description: "",
-        start_time: new Date(),
-        end_time: new Date(),
+        startTime: new Date(),
+        endTime: new Date(),
         location: "",
-        max_attendees: 0,
+        maxAttendees: 0,
       },
     ]);
   };
@@ -518,73 +253,112 @@ export default function EventsPage() {
     setView(newView);
   }, []);
 
-  const handleRegister = (eventId: number, sessionId: number) => {
-    if (currentUser?.role !== "user") {
-      toast.error("Only users can register for sessions.");
-      return;
+  const handleRegister = async (eventId: string, sessionId: string) => {
+    try {
+      const response = await fetch("/api/events/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ eventId, sessionId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to register for event");
+      }
+
+      const registration = await response.json();
+      setRegistrations([...registrations, registration]);
+      toast.success("Successfully registered for the session");
+      router.push("/reservations");
+    } catch (error) {
+      console.error("Failed to register:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to register for session");
     }
-
-    const newRegistration: EventRegistration = {
-      id: Date.now(),
-      event_id: eventId,
-      session_id: sessionId,
-      user_id: currentUser.id, // Use the current user's ID
-      booking_date: new Date(),
-    };
-
-    const updatedRegistrations = [...registrations, newRegistration];
-    setRegistrations(updatedRegistrations);
-    localStorage.setItem("registrations", JSON.stringify(updatedRegistrations));
-
-    toast.success("You have successfully registered for the session.");
-
-    // Navigate to the reservations page
-    router.push("/reservations");
   };
 
-  const isSessionRegistered = (eventId: number, sessionId: number) => {
-    return registrations.some((reg) => reg.event_id === eventId && reg.session_id === sessionId);
+  const isSessionRegistered = (eventId: string, sessionId: string) => {
+    return registrations.some((reg) => reg.eventId === eventId && reg.sessionId === sessionId);
+  };
+
+  const handleUpdateEvent = async (updatedEvent: Event) => {
+    try {
+      const response = await fetch(`/api/events/${updatedEvent.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedEvent),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update event");
+      }
+
+      const updated = await response.json();
+      setEvents(events.map((event) => (event.id === updated.id ? updated : event)));
+      setIsEditEventOpen(false);
+      setEditingEvent(null);
+      setSelectedEvent(updated);
+      toast.success("Event updated successfully");
+    } catch (error) {
+      console.error("Failed to update event:", error);
+      toast.error("Failed to update event");
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete event");
+      }
+
+      setEvents(events.filter((event) => event.id !== eventId));
+      toast.success("Event deleted successfully");
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error("Failed to delete event:", error);
+      toast.error("Failed to delete event");
+    }
+  };
+
+  const handleDeleteSession = async (eventId: string, sessionId: string) => {
+    try {
+      const response = await fetch(`/api/events/${eventId}/sessions/${sessionId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete session");
+      }
+
+      const updatedEvents = events.map((event) => {
+        if (event.id === eventId) {
+          return {
+            ...event,
+            sessions: event.sessions.filter((session) => session.id !== sessionId),
+          };
+        }
+        return event;
+      });
+
+      setEvents(updatedEvents);
+      toast.success("Session deleted successfully");
+      setSelectedEvent(updatedEvents.find((event) => event.id === eventId) || null);
+    } catch (error) {
+      console.error("Failed to delete session:", error);
+      toast.error("Failed to delete session");
+    }
   };
 
   const handleEditEvent = (event: Event) => {
     setEditingEvent(event);
     setIsEditEventOpen(true);
-  };
-
-  const handleUpdateEvent = (updatedEvent: Event) => {
-    const updatedEvents = events.map((event) =>
-      event.id === updatedEvent.id ? updatedEvent : event,
-    );
-    setEvents(updatedEvents);
-    localStorage.setItem("events", JSON.stringify(updatedEvents));
-    setIsEditEventOpen(false);
-    setEditingEvent(null);
-    setSelectedEvent(updatedEvent);
-    toast.success("Event updated successfully");
-  };
-
-  const handleDeleteEvent = (eventId: number) => {
-    const updatedEvents = events.filter((event) => event.id !== eventId);
-    setEvents(updatedEvents);
-    localStorage.setItem("events", JSON.stringify(updatedEvents));
-    toast.success("The event has been successfully removed.");
-    setSelectedEvent(null);
-  };
-
-  const handleDeleteSession = (eventId: number, sessionId: number) => {
-    const updatedEvents = events.map((event) => {
-      if (event.id === eventId) {
-        return {
-          ...event,
-          sessions: event.sessions.filter((session) => session.id !== sessionId),
-        };
-      }
-      return event;
-    });
-    setEvents(updatedEvents);
-    localStorage.setItem("events", JSON.stringify(updatedEvents));
-    toast.success("The session has been successfully removed.");
-    setSelectedEvent(updatedEvents.find((event) => event.id === eventId) || null);
   };
 
   console.log("Current events in state:", events);
@@ -594,7 +368,7 @@ export default function EventsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-blue-700">Events</h1>
         <div className="w-full sm:w-auto">
-          {currentUser?.role === "organizer" && (
+          {user?.role === UserRole.ORGANIZER && (
             <Dialog open={isCreateEventOpen} onOpenChange={setIsCreateEventOpen}>
               <DialogTrigger asChild>
                 <Button className="w-full sm:w-auto">Create New Event</Button>
@@ -629,7 +403,7 @@ export default function EventsPage() {
                         <Input
                           id="description"
                           name="description"
-                          value={newEvent.description}
+                          value={newEvent.description ?? ""}
                           onChange={handleInputChange}
                           placeholder="Enter event description"
                           required
@@ -644,7 +418,7 @@ export default function EventsPage() {
                           id="start_date"
                           name="start_date"
                           type="date"
-                          value={moment(newEvent.start_date).format("YYYY-MM-DD")}
+                          value={moment(newEvent.startDate).format("YYYY-MM-DD")}
                           onChange={handleDateChange}
                           required
                           className="border-blue-200 focus:border-blue-400"
@@ -658,7 +432,7 @@ export default function EventsPage() {
                           id="end_date"
                           name="end_date"
                           type="date"
-                          value={moment(newEvent.end_date).format("YYYY-MM-DD")}
+                          value={moment(newEvent.endDate).format("YYYY-MM-DD")}
                           onChange={handleDateChange}
                           required
                           className="border-blue-200 focus:border-blue-400"
@@ -673,7 +447,7 @@ export default function EventsPage() {
                         <Input
                           id="location"
                           name="location"
-                          value={newEvent.location}
+                          value={newEvent.location ?? ""}
                           onChange={handleInputChange}
                           placeholder="Enter event location"
                           required
@@ -684,9 +458,9 @@ export default function EventsPage() {
                         <Checkbox
                           id="is_virtual"
                           name="is_virtual"
-                          checked={newEvent.is_virtual}
+                          checked={newEvent.isVirtual}
                           onCheckedChange={(checked) =>
-                            setNewEvent((prev) => ({ ...prev, is_virtual: checked as boolean }))
+                            setNewEvent((prev) => ({ ...prev, isVirtual: checked as boolean }))
                           }
                           className="border-blue-400 text-blue-600"
                         />
@@ -702,7 +476,7 @@ export default function EventsPage() {
                           id="max_attendees"
                           name="max_attendees"
                           type="number"
-                          value={newEvent.max_attendees}
+                          value={newEvent.maxAttendees ?? 0}
                           onChange={handleInputChange}
                           placeholder="Enter maximum number of attendees"
                           required
@@ -717,7 +491,7 @@ export default function EventsPage() {
                           id="registration_deadline"
                           name="registration_deadline"
                           type="date"
-                          value={moment(newEvent.registration_deadline).format("YYYY-MM-DD")}
+                          value={moment(newEvent.registrationDeadline).format("YYYY-MM-DD")}
                           onChange={handleDateChange}
                           required
                           className="border-blue-200 focus:border-blue-400"
@@ -765,7 +539,7 @@ export default function EventsPage() {
                                 <Input
                                   id={`session_description_${index}`}
                                   name="description"
-                                  value={session.description}
+                                  value={session.description ?? ""}
                                   onChange={(e) => handleSessionInputChange(index, e)}
                                   placeholder="Enter session description"
                                   required
@@ -785,7 +559,7 @@ export default function EventsPage() {
                                   id={`session_start_time_${index}`}
                                   name="start_time"
                                   type="datetime-local"
-                                  value={moment(session.start_time).format("YYYY-MM-DDTHH:mm")}
+                                  value={moment(session.startTime).format("YYYY-MM-DDTHH:mm")}
                                   onChange={(e) => handleSessionDateChange(index, e)}
                                   required
                                   className="border-blue-200 focus:border-blue-400"
@@ -802,7 +576,7 @@ export default function EventsPage() {
                                   id={`session_end_time_${index}`}
                                   name="end_time"
                                   type="datetime-local"
-                                  value={moment(session.end_time).format("YYYY-MM-DDTHH:mm")}
+                                  value={moment(session.endTime).format("YYYY-MM-DDTHH:mm")}
                                   onChange={(e) => handleSessionDateChange(index, e)}
                                   required
                                   className="border-blue-200 focus:border-blue-400"
@@ -820,7 +594,7 @@ export default function EventsPage() {
                                 <Input
                                   id={`session_location_${index}`}
                                   name="location"
-                                  value={session.location}
+                                  value={session.location ?? ""}
                                   onChange={(e) => handleSessionInputChange(index, e)}
                                   placeholder="Enter session location"
                                   required
@@ -838,7 +612,7 @@ export default function EventsPage() {
                                   id={`session_max_attendees_${index}`}
                                   name="max_attendees"
                                   type="number"
-                                  value={session.max_attendees}
+                                  value={session.maxAttendees ?? 0}
                                   onChange={(e) => handleSessionInputChange(index, e)}
                                   placeholder="Enter maximum number of attendees"
                                   required
@@ -895,8 +669,8 @@ export default function EventsPage() {
           <Calendar
             localizer={localizer}
             events={events}
-            startAccessor={(event: Event) => new Date(event.start_date)}
-            endAccessor={(event: Event) => new Date(event.end_date)}
+            startAccessor={(event: Event) => event.startDate ?? new Date()}
+            endAccessor={(event: Event) => event.endDate ?? new Date()}
             style={{ height: 500 }}
             onSelectEvent={handleSelectEvent}
             view={view}
@@ -915,7 +689,7 @@ export default function EventsPage() {
               <CardTitle className="text-xl font-semibold text-blue-700 mb-2 sm:mb-0">
                 {selectedEvent.title}
               </CardTitle>
-              {currentUser?.role === "organizer" && (
+              {user?.role === UserRole.ORGANIZER && (
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
                   <Button
                     onClick={() => handleEditEvent(selectedEvent)}
@@ -942,8 +716,8 @@ export default function EventsPage() {
               <p>{selectedEvent.description}</p>
               <div className="flex items-center text-sm text-gray-600">
                 <ClockIcon className="w-4 h-4 mr-2" />
-                {moment(selectedEvent.start_date).format("MMM D, YYYY")} -{" "}
-                {moment(selectedEvent.end_date).format("MMM D, YYYY")}
+                {moment(selectedEvent.startDate).format("MMM D, YYYY")} -{" "}
+                {moment(selectedEvent.endDate).format("MMM D, YYYY")}
               </div>
               <div className="flex items-center text-sm text-gray-600">
                 <MapPinIcon className="w-4 h-4 mr-2" />
@@ -951,14 +725,14 @@ export default function EventsPage() {
               </div>
               <div className="flex items-center text-sm text-gray-600">
                 <UsersIcon className="w-4 h-4 mr-2" />
-                Max Attendees: {selectedEvent.max_attendees}
+                Max Attendees: {selectedEvent.maxAttendees}
               </div>
-              <Badge variant={selectedEvent.is_virtual ? "secondary" : "default"}>
-                {selectedEvent.is_virtual ? "Virtual" : "In-person"}
+              <Badge variant={selectedEvent.isVirtual ? "secondary" : "default"}>
+                {selectedEvent.isVirtual ? "Virtual" : "In-person"}
               </Badge>
               <div className="text-sm text-gray-600">
                 Registration Deadline:{" "}
-                {moment(selectedEvent.registration_deadline).format("MMM D, YYYY")}
+                {moment(selectedEvent.registrationDeadline).format("MMM D, YYYY")}
               </div>
               <div className="text-sm font-semibold text-blue-700">
                 Status: {selectedEvent.status}
@@ -977,8 +751,8 @@ export default function EventsPage() {
                               <p className="text-sm text-gray-600">{session.description}</p>
                               <div className="flex items-center text-sm text-gray-600 mt-1">
                                 <ClockIcon className="w-4 h-4 mr-1" />
-                                {moment(session.start_time).format("MMM D, YYYY HH:mm")} -
-                                {moment(session.end_time).format("HH:mm")}
+                                {moment(session.startTime).format("MMM D, YYYY HH:mm")} -
+                                {moment(session.endTime).format("HH:mm")}
                               </div>
                               <div className="flex items-center text-sm text-gray-600">
                                 <MapPinIcon className="w-4 h-4 mr-1" />
@@ -986,13 +760,13 @@ export default function EventsPage() {
                               </div>
                               <div className="flex items-center text-sm text-gray-600">
                                 <UsersIcon className="w-4 h-4 mr-1" />
-                                Max Attendees: {session.max_attendees}
+                                Max Attendees: {session.maxAttendees}
                               </div>
                               {isSessionRegistered(selectedEvent.id, session.id) ? (
                                 <Badge className="mt-2" variant="secondary">
                                   Registered
                                 </Badge>
-                              ) : currentUser?.role === "user" ? (
+                              ) : user?.role === UserRole.USER ? (
                                 <Button
                                   onClick={() => handleRegister(selectedEvent.id, session.id)}
                                   className="mt-2"
@@ -1001,7 +775,7 @@ export default function EventsPage() {
                                 </Button>
                               ) : null}
                             </div>
-                            {currentUser?.role === "organizer" && (
+                            {user?.role === UserRole.ORGANIZER && (
                               <Button
                                 onClick={() => handleDeleteSession(selectedEvent.id, session.id)}
                                 variant="destructive"
@@ -1056,7 +830,7 @@ export default function EventsPage() {
                   </Label>
                   <Input
                     id="edit-description"
-                    value={editingEvent.description}
+                    value={editingEvent.description ?? ""}
                     onChange={(e) =>
                       setEditingEvent({ ...editingEvent, description: e.target.value })
                     }
@@ -1070,9 +844,9 @@ export default function EventsPage() {
                   <Input
                     id="edit-start-date"
                     type="date"
-                    value={moment(editingEvent.start_date).format("YYYY-MM-DD")}
+                    value={moment(editingEvent.startDate).format("YYYY-MM-DD")}
                     onChange={(e) =>
-                      setEditingEvent({ ...editingEvent, start_date: new Date(e.target.value) })
+                      setEditingEvent({ ...editingEvent, startDate: new Date(e.target.value) })
                     }
                     className="border-blue-200 focus:border-blue-400"
                   />
@@ -1084,9 +858,9 @@ export default function EventsPage() {
                   <Input
                     id="edit-end-date"
                     type="date"
-                    value={moment(editingEvent.end_date).format("YYYY-MM-DD")}
+                    value={moment(editingEvent.endDate).format("YYYY-MM-DD")}
                     onChange={(e) =>
-                      setEditingEvent({ ...editingEvent, end_date: new Date(e.target.value) })
+                      setEditingEvent({ ...editingEvent, endDate: new Date(e.target.value) })
                     }
                     className="border-blue-200 focus:border-blue-400"
                   />
@@ -1097,7 +871,7 @@ export default function EventsPage() {
                   </Label>
                   <Input
                     id="edit-location"
-                    value={editingEvent.location}
+                    value={editingEvent.location ?? ""}
                     onChange={(e) => setEditingEvent({ ...editingEvent, location: e.target.value })}
                     className="border-blue-200 focus:border-blue-400"
                   />
@@ -1105,9 +879,9 @@ export default function EventsPage() {
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="edit-is-virtual"
-                    checked={editingEvent.is_virtual}
+                    checked={editingEvent.isVirtual}
                     onCheckedChange={(checked) =>
-                      setEditingEvent({ ...editingEvent, is_virtual: checked as boolean })
+                      setEditingEvent({ ...editingEvent, isVirtual: checked as boolean })
                     }
                     className="border-blue-400 text-blue-600"
                   />
@@ -1122,9 +896,9 @@ export default function EventsPage() {
                   <Input
                     id="edit-max-attendees"
                     type="number"
-                    value={editingEvent.max_attendees}
+                    value={editingEvent.maxAttendees ?? 0}
                     onChange={(e) =>
-                      setEditingEvent({ ...editingEvent, max_attendees: Number(e.target.value) })
+                      setEditingEvent({ ...editingEvent, maxAttendees: Number(e.target.value) })
                     }
                     className="border-blue-200 focus:border-blue-400"
                   />
@@ -1136,11 +910,11 @@ export default function EventsPage() {
                   <Input
                     id="edit-registration-deadline"
                     type="date"
-                    value={moment(editingEvent.registration_deadline).format("YYYY-MM-DD")}
+                    value={moment(editingEvent.registrationDeadline).format("YYYY-MM-DD")}
                     onChange={(e) =>
                       setEditingEvent({
                         ...editingEvent,
-                        registration_deadline: new Date(e.target.value),
+                        registrationDeadline: new Date(e.target.value),
                       })
                     }
                     className="border-blue-200 focus:border-blue-400"
@@ -1181,7 +955,7 @@ export default function EventsPage() {
                           </Label>
                           <Input
                             id={`edit-session-description-${index}`}
-                            value={session.description}
+                            value={session.description ?? ""}
                             onChange={(e) => {
                               const updatedSessions = [...editingEvent.sessions];
                               updatedSessions[index] = { ...session, description: e.target.value };
@@ -1200,12 +974,12 @@ export default function EventsPage() {
                           <Input
                             id={`edit-session-start-time-${index}`}
                             type="datetime-local"
-                            value={moment(session.start_time).format("YYYY-MM-DDTHH:mm")}
+                            value={moment(session.startTime).format("YYYY-MM-DDTHH:mm")}
                             onChange={(e) => {
                               const updatedSessions = [...editingEvent.sessions];
                               updatedSessions[index] = {
                                 ...session,
-                                start_time: new Date(e.target.value),
+                                startTime: new Date(e.target.value),
                               };
                               setEditingEvent({ ...editingEvent, sessions: updatedSessions });
                             }}
@@ -1222,12 +996,12 @@ export default function EventsPage() {
                           <Input
                             id={`edit-session-end-time-${index}`}
                             type="datetime-local"
-                            value={moment(session.end_time).format("YYYY-MM-DDTHH:mm")}
+                            value={moment(session.endTime).format("YYYY-MM-DDTHH:mm")}
                             onChange={(e) => {
                               const updatedSessions = [...editingEvent.sessions];
                               updatedSessions[index] = {
                                 ...session,
-                                end_time: new Date(e.target.value),
+                                endTime: new Date(e.target.value),
                               };
                               setEditingEvent({ ...editingEvent, sessions: updatedSessions });
                             }}
@@ -1243,7 +1017,7 @@ export default function EventsPage() {
                           </Label>
                           <Input
                             id={`edit-session-location-${index}`}
-                            value={session.location}
+                            value={session.location ?? ""}
                             onChange={(e) => {
                               const updatedSessions = [...editingEvent.sessions];
                               updatedSessions[index] = { ...session, location: e.target.value };
@@ -1262,12 +1036,12 @@ export default function EventsPage() {
                           <Input
                             id={`edit-session-max-attendees-${index}`}
                             type="number"
-                            value={session.max_attendees}
+                            value={session.maxAttendees ?? 0}
                             onChange={(e) => {
                               const updatedSessions = [...editingEvent.sessions];
                               updatedSessions[index] = {
                                 ...session,
-                                max_attendees: Number(e.target.value),
+                                maxAttendees: Number(e.target.value),
                               };
                               setEditingEvent({ ...editingEvent, sessions: updatedSessions });
                             }}

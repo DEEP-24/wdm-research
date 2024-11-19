@@ -27,7 +27,7 @@ async function main() {
     },
   });
 
-  await prisma.user.create({
+  const organizer = await prisma.user.create({
     data: {
       firstName: "Event",
       lastName: "Organizer",
@@ -87,6 +87,166 @@ async function main() {
       dob: new Date("1990-04-10"),
       createdAt: new Date(),
       updatedAt: new Date(),
+    },
+  });
+
+  // Add sample events
+  await prisma.event.create({
+    data: {
+      title: "Tech Innovation Summit 2024",
+      description: "Annual gathering of tech innovators and investors",
+      startDate: new Date("2024-11-15T09:00:00Z"),
+      endDate: new Date("2024-11-16T17:00:00Z"),
+      location: "San Francisco Convention Center",
+      isVirtual: false,
+      maxAttendees: 500,
+      registrationDeadline: new Date("2024-11-10T23:59:59Z"),
+      status: "UPCOMING",
+      userId: organizer.id,
+      sessions: {
+        create: [
+          {
+            title: "Opening Keynote",
+            description: "Welcome address and future tech trends",
+            startTime: new Date("2024-11-15T09:30:00Z"),
+            endTime: new Date("2024-11-15T11:00:00Z"),
+            location: "Main Hall",
+            maxAttendees: 500,
+          },
+          {
+            title: "Investor Panel",
+            description: "Investment opportunities in emerging tech",
+            startTime: new Date("2024-11-15T13:00:00Z"),
+            endTime: new Date("2024-11-15T14:30:00Z"),
+            location: "Conference Room A",
+            maxAttendees: 200,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.event.create({
+    data: {
+      title: "AI Research Symposium",
+      description: "Latest developments in artificial intelligence",
+      startDate: new Date("2024-11-20T10:00:00Z"),
+      endDate: new Date("2024-11-20T18:00:00Z"),
+      location: "Virtual",
+      isVirtual: true,
+      maxAttendees: 1000,
+      registrationDeadline: new Date("2024-11-18T23:59:59Z"),
+      status: "UPCOMING",
+      userId: organizer.id,
+      sessions: {
+        create: [
+          {
+            title: "Machine Learning Workshop",
+            description: "Hands-on ML implementation session",
+            startTime: new Date("2024-11-20T10:30:00Z"),
+            endTime: new Date("2024-11-20T12:30:00Z"),
+            location: "Virtual Room 1",
+            maxAttendees: 300,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.event.create({
+    data: {
+      title: "Startup Pitch Night",
+      description: "Evening of startup presentations and networking",
+      startDate: new Date("2024-11-05T18:00:00Z"),
+      endDate: new Date("2024-11-05T22:00:00Z"),
+      location: "Innovation Hub, New York",
+      isVirtual: false,
+      maxAttendees: 150,
+      registrationDeadline: new Date("2024-11-03T23:59:59Z"),
+      status: "UPCOMING",
+      userId: organizer.id,
+      sessions: {
+        create: [
+          {
+            title: "Pitch Session A",
+            description: "Early-stage startups presentations",
+            startTime: new Date("2024-11-05T18:30:00Z"),
+            endTime: new Date("2024-11-05T20:00:00Z"),
+            location: "Main Stage",
+            maxAttendees: 150,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.event.create({
+    data: {
+      title: "Blockchain Technology Forum",
+      description: "Deep dive into blockchain innovations and applications",
+      startDate: new Date("2024-11-25T09:00:00Z"),
+      endDate: new Date("2024-11-26T17:00:00Z"),
+      location: "Virtual",
+      isVirtual: true,
+      maxAttendees: 800,
+      registrationDeadline: new Date("2024-11-23T23:59:59Z"),
+      status: "UPCOMING",
+      userId: organizer.id,
+      sessions: {
+        create: [
+          {
+            title: "Web3 Fundamentals",
+            description: "Introduction to blockchain and Web3",
+            startTime: new Date("2024-11-25T09:30:00Z"),
+            endTime: new Date("2024-11-25T11:30:00Z"),
+            location: "Virtual Room A",
+            maxAttendees: 400,
+          },
+          {
+            title: "DeFi Workshop",
+            description: "Practical applications in decentralized finance",
+            startTime: new Date("2024-11-25T13:00:00Z"),
+            endTime: new Date("2024-11-25T15:00:00Z"),
+            location: "Virtual Room B",
+            maxAttendees: 300,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.event.create({
+    data: {
+      title: "Healthcare Innovation Conference",
+      description: "Exploring the future of healthcare technology",
+      startDate: new Date("2024-11-28T08:00:00Z"),
+      endDate: new Date("2024-11-29T16:00:00Z"),
+      location: "Boston Medical Center",
+      isVirtual: false,
+      maxAttendees: 300,
+      registrationDeadline: new Date("2024-11-25T23:59:59Z"),
+      status: "UPCOMING",
+      userId: organizer.id,
+      sessions: {
+        create: [
+          {
+            title: "Digital Health Transformation",
+            description: "Impact of technology on healthcare delivery",
+            startTime: new Date("2024-11-28T09:00:00Z"),
+            endTime: new Date("2024-11-28T11:00:00Z"),
+            location: "Auditorium A",
+            maxAttendees: 300,
+          },
+          {
+            title: "AI in Medical Diagnosis",
+            description: "Machine learning applications in healthcare",
+            startTime: new Date("2024-11-28T13:00:00Z"),
+            endTime: new Date("2024-11-28T15:00:00Z"),
+            location: "Auditorium B",
+            maxAttendees: 250,
+          },
+        ],
+      },
     },
   });
 }

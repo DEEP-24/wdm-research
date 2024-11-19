@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server";
 import * as argon2 from "argon2";
 import { db } from "@/lib/db";
-import { registerSchema } from "@/app/(auth)/register/schema";
 import { z } from "zod";
 import type { UserRole } from "@prisma/client";
+import { registerSchema } from "@/lib/schema";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     console.log("Received registration data:", body);
 
-    // Validate the request body against our schema
     const validatedData = registerSchema.parse(body);
     console.log("Validated data:", validatedData);
 
-    // Check if user already exists
     const existingUser = await db.user.findUnique({
       where: { email: validatedData.email },
     });
@@ -23,13 +21,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email already exists" }, { status: 400 });
     }
 
-    // Hash password using argon2
     const hashedPassword = await argon2.hash(validatedData.password);
 
-    // Convert role to uppercase for database
     const role = validatedData.role.toUpperCase() as UserRole;
 
-    // Create user with properly formatted data
     const user = await db.user.create({
       data: {
         email: validatedData.email,
@@ -68,7 +63,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Return more specific error message
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Internal server error",

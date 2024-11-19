@@ -30,15 +30,79 @@ model User {
   zipcode  String
   dob      DateTime
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
   linkedInURL String?
   twitterURL  String?
   githubURL   String?
   papers      String?
 
+  events Event[]
+
+  registrations EventRegistration[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@map("users")
+}
+
+model Event {
+  id                   String    @id @default(uuid()) @map("id")
+  title                String
+  description          String?
+  startDate            DateTime?
+  endDate              DateTime?
+  location             String?
+  isVirtual            Boolean   @default(false)
+  maxAttendees         Int?
+  registrationDeadline DateTime?
+  status               String?
+
+  sessions      EventSession[]
+  registrations EventRegistration[]
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("events")
+}
+
+model EventSession {
+  id           String    @id @default(uuid()) @map("id")
+  title        String
+  description  String?
+  startTime    DateTime?
+  endTime      DateTime?
+  location     String?
+  maxAttendees Int?
+
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+
+  registrations EventRegistration[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("event_sessions")
+}
+
+model EventRegistration {
+  id          String   @id @default(uuid()) @map("id")
+  bookingDate DateTime @default(now())
+
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId String
+
+  session   EventSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@map("event_registrations")
 }
 
 enum UserRole {
