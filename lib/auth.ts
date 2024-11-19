@@ -31,8 +31,14 @@ export async function getCurrentUser() {
       },
     });
 
+    if (!user) {
+      cookies().delete("user-token");
+      return null;
+    }
+
     return user;
   } catch {
+    cookies().delete("user-token");
     return null;
   }
 }
