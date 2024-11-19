@@ -26,6 +26,7 @@ import {
   YAxis,
 } from "recharts";
 import moment from "moment";
+import { UserRole } from "@prisma/client";
 
 const activityData = [
   { name: "Mon", value: 10 },
@@ -134,12 +135,12 @@ export default function DashboardPage() {
 
   const renderDashboardContent = () => {
     switch (currentUser.role) {
-      case "admin":
-      case "user":
+      case UserRole.ADMIN:
+      case UserRole.USER:
         return renderAdminUserDashboard();
-      case "investor":
+      case UserRole.INVESTOR:
         return renderInvestorDashboard();
-      case "organizer":
+      case UserRole.ORGANIZER:
         return renderOrganizerDashboard(upcomingEvents);
       default:
         return renderAdminUserDashboard();

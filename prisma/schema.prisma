@@ -33,6 +33,11 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  linkedInURL String?
+  twitterURL  String?
+  githubURL   String?
+  papers      String?
+
   @@map("users")
 }
 

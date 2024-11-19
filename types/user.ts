@@ -1,17 +1,16 @@
-export interface User {
+export type User = {
   id: string;
-  email: string;
   firstName: string;
   lastName: string;
-  role: "user" | "admin" | "investor" | "organizer";
-  password: string;
+  email: string;
+  role: "ADMIN" | "ORGANIZER" | "INVESTOR" | "USER";
   researchInterests: string;
   expertise: string;
-  phoneNo: string;
-  address: string;
-  dob: string;
+  phone: string;
+  city: string;
+  state: string;
   linkedInURL?: string;
   twitterURL?: string;
   githubURL?: string;
-  papers?: string[];
-}
+  papers?: string;
+};
