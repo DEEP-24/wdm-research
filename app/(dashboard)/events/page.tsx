@@ -87,6 +87,7 @@ export default function EventsPage() {
       ],
     },
     mode: "onChange",
+    context: { parseDate: true },
   });
 
   const eventLocation = watch("location");
@@ -209,8 +210,7 @@ export default function EventsPage() {
   };
 
   const onSubmit = async (data: EventFormValues) => {
-    console.log("Form submitted with data:", data);
-
+    console.log("onSubmit called with data:", data);
     try {
       // Check if all sessions are saved
       const allSessionsSaved = fields.every((_, index) => savedSessions[index]);
@@ -230,21 +230,26 @@ export default function EventsPage() {
       const formattedData = {
         title: data.title,
         description: data.description,
-        startDate: new Date(data.startDate),
-        endDate: new Date(data.endDate),
+        startDate: new Date(data.startDate).toISOString(),
+        endDate: new Date(data.endDate).toISOString(),
         location: data.location,
         isVirtual: data.isVirtual,
         maxAttendees: Number(data.maxAttendees),
-        registrationDeadline: new Date(data.registrationDeadline),
+        registrationDeadline: new Date(data.registrationDeadline).toISOString(),
         status: data.status,
-        sessions: fields.map((_, index) => ({
-          title: data.sessions[index].title,
-          description: data.sessions[index].description,
-          startTime: savedSessionData[index]?.startTime,
-          endTime: savedSessionData[index]?.endTime,
-          location: data.location,
-          maxAttendees: Number(data.sessions[index].maxAttendees),
-        })),
+        sessions: fields.map((_, index) => {
+          const sessionStartTime = savedSessionData[index]?.startTime;
+          const sessionEndTime = savedSessionData[index]?.endTime;
+
+          return {
+            title: data.sessions[index].title,
+            description: data.sessions[index].description,
+            startTime: sessionStartTime ? new Date(sessionStartTime).toISOString() : null,
+            endTime: sessionEndTime ? new Date(sessionEndTime).toISOString() : null,
+            location: data.location,
+            maxAttendees: Number(data.sessions[index].maxAttendees),
+          };
+        }),
       };
 
       console.log("Formatted data:", formattedData);
@@ -795,10 +800,18 @@ export default function EventsPage() {
                   </DialogTitle>
                 </DialogHeader>
                 <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSubmit(onSubmit)(e);
-                  }}
+                  onSubmit={handleSubmit(
+                    (data) => {
+                      console.log("Form validation passed, data:", data);
+                      onSubmit(data);
+                    },
+                    (errors) => {
+                      console.log("Form validation failed, errors:", errors);
+                      Object.keys(errors).forEach((key) => {
+                        console.log(`Error in ${key}:`, errors[key as keyof typeof errors]);
+                      });
+                    },
+                  )}
                   className="space-y-6"
                 >
                   <div className="grid grid-cols-2 gap-4">
@@ -946,6 +959,19 @@ export default function EventsPage() {
                           <AccordionContent className="bg-blue-50 p-4 rounded-lg">
                             <div className="grid grid-cols-2 gap-4">
                               <div>
+                                {sessionTimeErrors[index] && (
+                                  <Alert variant="destructive" className="mb-4">
+                                    <AlertCircle className="h-4 w-4 mr-2" />
+                                    <AlertTitle>
+                                      {sessionTimeErrors[index]?.type === "conflict"
+                                        ? "Session Conflict"
+                                        : "Time Range Error"}
+                                    </AlertTitle>
+                                    <AlertDescription>
+                                      {sessionTimeErrors[index]?.message}
+                                    </AlertDescription>
+                                  </Alert>
+                                )}
                                 <Label
                                   htmlFor={`sessions.${index}.title`}
                                   className="text-blue-600"
@@ -1117,19 +1143,6 @@ export default function EventsPage() {
                                 {savedSessions[index] ? "Session Saved" : "Save Session"}
                               </Button>
                             </div>
-                            {sessionTimeErrors[index] && (
-                              <Alert variant="destructive" className="mb-4">
-                                <AlertCircle className="h-4 w-4 mr-2" />
-                                <AlertTitle>
-                                  {sessionTimeErrors[index]?.type === "conflict"
-                                    ? "Session Conflict"
-                                    : "Time Range Error"}
-                                </AlertTitle>
-                                <AlertDescription>
-                                  {sessionTimeErrors[index]?.message}
-                                </AlertDescription>
-                              </Alert>
-                            )}
                           </AccordionContent>
                         </AccordionItem>
                       ))}

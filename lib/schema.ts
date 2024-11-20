@@ -60,6 +60,16 @@ export const eventSessionSchema = z
     },
   );
 
+const parseDate = (val: unknown) => {
+  if (val instanceof Date) {
+    return val;
+  }
+  if (typeof val === "string") {
+    return new Date(val);
+  }
+  return null;
+};
+
 export const eventSchema = z
   .object({
     title: z.string().min(1, "Title is required"),
@@ -79,16 +89,12 @@ export const eventSchema = z
     status: z.string().default("Upcoming"),
     sessions: z.array(
       z.object({
-        title: z.string().min(1, "Session title is required"),
-        description: z.string().min(1, "Session description is required"),
-        startTime: z.date({
-          required_error: "Start time is required",
-        }),
-        endTime: z.date({
-          required_error: "End time is required",
-        }),
+        title: z.string().min(1, "Title is required"),
+        description: z.string().min(1, "Description is required"),
+        startTime: z.preprocess(parseDate, z.date()),
+        endTime: z.preprocess(parseDate, z.date()),
         location: z.string(),
-        maxAttendees: z.number().min(1, "Maximum attendees must be at least 1"),
+        maxAttendees: z.number().min(1, "Must have at least 1 attendee"),
       }),
     ),
   })
