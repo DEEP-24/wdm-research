@@ -99,7 +99,7 @@ export default function EventsPage() {
 
   useEffect(() => {
     const subscription = watch((value, { name }) => {
-      if (name === "location") {
+      if (name === "location" && !value.isVirtual) {
         fields.forEach((_, index) => {
           setValue(`sessions.${index}.location`, value.location || "");
         });
@@ -132,8 +132,6 @@ export default function EventsPage() {
         endTime: null,
       },
     }));
-
-    console.log("Saved Sessions", savedSessions);
   };
 
   const [view, setView] = useState<ViewType>("month");
@@ -210,7 +208,6 @@ export default function EventsPage() {
   };
 
   const onSubmit = async (data: EventFormValues) => {
-    console.log("onSubmit called with data:", data);
     try {
       // Check if all sessions are saved
       const allSessionsSaved = fields.every((_, index) => savedSessions[index]);
@@ -232,7 +229,7 @@ export default function EventsPage() {
         description: data.description,
         startDate: new Date(data.startDate).toISOString(),
         endDate: new Date(data.endDate).toISOString(),
-        location: data.location,
+        location: data.isVirtual ? null : data.location,
         isVirtual: data.isVirtual,
         maxAttendees: Number(data.maxAttendees),
         registrationDeadline: new Date(data.registrationDeadline).toISOString(),
@@ -246,13 +243,11 @@ export default function EventsPage() {
             description: data.sessions[index].description,
             startTime: sessionStartTime ? new Date(sessionStartTime).toISOString() : null,
             endTime: sessionEndTime ? new Date(sessionEndTime).toISOString() : null,
-            location: data.location,
+            location: data.isVirtual ? null : data.location,
             maxAttendees: Number(data.sessions[index].maxAttendees),
           };
         }),
       };
-
-      console.log("Formatted data:", formattedData);
 
       const response = await fetch("/api/events", {
         method: "POST",
@@ -613,21 +608,6 @@ export default function EventsPage() {
     }
   };
 
-  // Add these state and helper functions near the top of the component
-  const [sessionFieldErrors] = useState<{
-    [key: number]: { [field: string]: string };
-  }>({});
-
-  // const setFieldError = (sessionIndex: number, field: string, message: string) => {
-  //   setSessionFieldErrors((prev) => ({
-  //     ...prev,
-  //     [sessionIndex]: {
-  //       ...(prev[sessionIndex] || {}),
-  //       [field]: message,
-  //     },
-  //   }));
-  // };
-
   // Update the formatDateForInput function to handle dates correctly
   const formatDateForInput = (date: Date | string | null): string => {
     if (!date) {
@@ -652,36 +632,6 @@ export default function EventsPage() {
       return "";
     }
   };
-
-  // Add logging to the useEffect that watches sessions
-  useEffect(() => {
-    const sessions = watch("sessions");
-    console.log("Current sessions in form:", sessions);
-    console.log("Saved sessions state:", savedSessions);
-  }, [watch("sessions"), savedSessions]);
-
-  // Add a useEffect to log saved sessions state changes
-  useEffect(() => {
-    console.log("Saved sessions state updated:", {
-      savedSessions,
-      currentFormSessions: watch("sessions"),
-    });
-  }, [savedSessions, watch]);
-
-  // Add this useEffect to monitor saved sessions state
-  useEffect(() => {
-    console.log("Current saved sessions state:", savedSessions);
-  }, [savedSessions]);
-
-  // Add this useEffect to monitor session field errors
-  useEffect(() => {
-    console.log("Current session field errors:", sessionFieldErrors);
-  }, [sessionFieldErrors]);
-
-  // Add an effect to monitor savedSessionData
-  useEffect(() => {
-    console.log("Saved session data:", savedSessionData);
-  }, [savedSessionData]);
 
   // Update the convertUTCToLocal function
   const convertUTCToLocal = (utcDate: string | Date | null): string => {
@@ -800,18 +750,9 @@ export default function EventsPage() {
                   </DialogTitle>
                 </DialogHeader>
                 <form
-                  onSubmit={handleSubmit(
-                    (data) => {
-                      console.log("Form validation passed, data:", data);
-                      onSubmit(data);
-                    },
-                    (errors) => {
-                      console.log("Form validation failed, errors:", errors);
-                      Object.keys(errors).forEach((key) => {
-                        console.log(`Error in ${key}:`, errors[key as keyof typeof errors]);
-                      });
-                    },
-                  )}
+                  onSubmit={handleSubmit((data) => {
+                    onSubmit(data);
+                  })}
                   className="space-y-6"
                 >
                   <div className="grid grid-cols-2 gap-4">
@@ -890,6 +831,8 @@ export default function EventsPage() {
                           id="location"
                           {...register("location")}
                           className="border-blue-200 focus:border-blue-400"
+                          disabled={watch("isVirtual")}
+                          placeholder={watch("isVirtual") ? "Virtual Event" : "Enter location"}
                         />
                         {errors.location && (
                           <span className="text-red-500 text-sm">{errors.location.message}</span>
@@ -900,6 +843,16 @@ export default function EventsPage() {
                           id="isVirtual"
                           {...register("isVirtual")}
                           className="border-blue-400 text-blue-600"
+                          onCheckedChange={(checked) => {
+                            setValue("isVirtual", checked as boolean);
+                            if (checked) {
+                              setValue("location", "");
+                              // Clear location for all sessions
+                              fields.forEach((_, index) => {
+                                setValue(`sessions.${index}.location`, "");
+                              });
+                            }
+                          }}
                         />
                         <Label htmlFor="isVirtual" className="text-blue-600">
                           Virtual Event
@@ -957,21 +910,21 @@ export default function EventsPage() {
                             Session {index + 1}
                           </AccordionTrigger>
                           <AccordionContent className="bg-blue-50 p-4 rounded-lg">
+                            {sessionTimeErrors[index] && (
+                              <Alert variant="destructive" className="mb-4">
+                                <AlertCircle className="h-4 w-4 mr-2" />
+                                <AlertTitle>
+                                  {sessionTimeErrors[index]?.type === "conflict"
+                                    ? "Session Conflict"
+                                    : "Time Range Error"}
+                                </AlertTitle>
+                                <AlertDescription>
+                                  {sessionTimeErrors[index]?.message}
+                                </AlertDescription>
+                              </Alert>
+                            )}
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                {sessionTimeErrors[index] && (
-                                  <Alert variant="destructive" className="mb-4">
-                                    <AlertCircle className="h-4 w-4 mr-2" />
-                                    <AlertTitle>
-                                      {sessionTimeErrors[index]?.type === "conflict"
-                                        ? "Session Conflict"
-                                        : "Time Range Error"}
-                                    </AlertTitle>
-                                    <AlertDescription>
-                                      {sessionTimeErrors[index]?.message}
-                                    </AlertDescription>
-                                  </Alert>
-                                )}
                                 <Label
                                   htmlFor={`sessions.${index}.title`}
                                   className="text-blue-600"
@@ -1075,9 +1028,13 @@ export default function EventsPage() {
                                 <Input
                                   id={`sessions.${index}.location`}
                                   {...register(`sessions.${index}.location`)}
-                                  className="border-blue-200 focus:border-blue-400 bg-gray-100"
-                                  readOnly
-                                  value={eventLocation}
+                                  className="border-blue-200 focus:border-blue-400"
+                                  disabled={watch("isVirtual") || savedSessions[index]}
+                                  placeholder={
+                                    watch("isVirtual")
+                                      ? "Virtual Session"
+                                      : "Enter session location"
+                                  }
                                 />
                                 {errors.sessions?.[index]?.location && (
                                   <span className="text-red-500 text-sm">
@@ -1159,14 +1116,16 @@ export default function EventsPage() {
                     type="submit"
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                     disabled={
-                      !fields.every((_, index) => savedSessions[index]) ||
-                      Object.values(sessionTimeErrors).some((error) => error !== null) ||
                       !watch("title") ||
                       !watch("description") ||
                       !watch("startDate") ||
                       !watch("endDate") ||
-                      !watch("location") ||
-                      !watch("registrationDeadline")
+                      !watch("registrationDeadline") ||
+                      (!watch("isVirtual") && !watch("location")) ||
+                      !watch("maxAttendees") ||
+                      Number(watch("maxAttendees")) <= 0 ||
+                      !fields.every((_, index) => savedSessions[index]) ||
+                      Object.values(sessionTimeErrors).some((error) => error !== null)
                     }
                   >
                     Create Event
@@ -1235,7 +1194,8 @@ export default function EventsPage() {
               </div>
               <div className="flex items-center text-sm text-gray-600">
                 <MapPinIcon className="w-4 h-4 mr-2" />
-                {selectedEvent.location}
+                {selectedEvent.isVirtual && "Virtual Event"}
+                {selectedEvent.location && !selectedEvent.isVirtual && selectedEvent.location}
               </div>
               <div className="flex items-center text-sm text-gray-600">
                 <UsersIcon className="w-4 h-4 mr-2" />
@@ -1273,7 +1233,8 @@ export default function EventsPage() {
                               </div>
                               <div className="flex items-center text-sm text-gray-600">
                                 <MapPinIcon className="w-4 h-4 mr-1" />
-                                {session.location}
+                                {selectedEvent.isVirtual && "Virtual Event"}
+                                {session.location && !selectedEvent.isVirtual && session.location}
                               </div>
                               <div className="flex items-center text-sm text-gray-600">
                                 <UsersIcon className="w-4 h-4 mr-1" />

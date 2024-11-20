@@ -80,7 +80,7 @@ export const eventSchema = z
     endDate: z.coerce.date({
       required_error: "End date is required",
     }),
-    location: z.string().min(1, "Location is required"),
+    location: z.string().nullable().optional(),
     isVirtual: z.boolean().default(false),
     maxAttendees: z.number().min(1, "Maximum attendees must be at least 1"),
     registrationDeadline: z.coerce.date({
