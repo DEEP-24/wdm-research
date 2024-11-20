@@ -37,3 +37,89 @@ export const registerSchema = z
   });
 
 export type RegisterFormData = z.infer<typeof registerSchema>;
+
+export const eventSessionSchema = z
+  .object({
+    title: z.string().min(1, "Session title is required"),
+    description: z.string().min(1, "Session description is required"),
+    startTime: z.date(),
+    endTime: z.date(),
+    location: z.string().min(1, "Session location is required"),
+    maxAttendees: z.number().min(1, "Maximum attendees must be at least 1"),
+  })
+  .refine(
+    (data) => {
+      if (!data.startTime || !data.endTime) {
+        return true;
+      }
+      return new Date(data.endTime) > new Date(data.startTime);
+    },
+    {
+      message: "Session end time must be after start time",
+      path: ["endTime"],
+    },
+  );
+
+export const eventSchema = z
+  .object({
+    title: z.string().min(1, "Title is required"),
+    description: z.string().min(1, "Description is required"),
+    startDate: z.coerce.date({
+      required_error: "Start date is required",
+    }),
+    endDate: z.coerce.date({
+      required_error: "End date is required",
+    }),
+    location: z.string().min(1, "Location is required"),
+    isVirtual: z.boolean().default(false),
+    maxAttendees: z.number().min(1, "Maximum attendees must be at least 1"),
+    registrationDeadline: z.coerce.date({
+      required_error: "Registration deadline is required",
+    }),
+    status: z.string().default("Upcoming"),
+    sessions: z.array(
+      z.object({
+        title: z.string().min(1, "Session title is required"),
+        description: z.string().min(1, "Session description is required"),
+        startTime: z.date({
+          required_error: "Start time is required",
+        }),
+        endTime: z.date({
+          required_error: "End time is required",
+        }),
+        location: z.string(),
+        maxAttendees: z.number().min(1, "Maximum attendees must be at least 1"),
+      }),
+    ),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.startDate || !data.endDate) {
+      return;
+    }
+
+    // Get date strings for comparison (removes time component)
+    const startDateStr = data.startDate.toISOString().split("T")[0];
+    const endDateStr = data.endDate.toISOString().split("T")[0];
+
+    if (endDateStr < startDateStr) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "End date must be on or after start date",
+        path: ["endDate"],
+      });
+    }
+
+    if (data.registrationDeadline) {
+      const regDateStr = data.registrationDeadline.toISOString().split("T")[0];
+      if (regDateStr > startDateStr) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Registration deadline must be before event start date",
+          path: ["registrationDeadline"],
+        });
+      }
+    }
+  });
+
+export type EventFormValues = z.infer<typeof eventSchema>;
+export type EventSessionFormValues = z.infer<typeof eventSessionSchema>;
