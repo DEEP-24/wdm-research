@@ -53,6 +53,9 @@ model User {
 
   sharedFiles SharedFile[]
 
+  forums Forum[]
+  posts  Post[]
+
   @@map("users")
 }
 
@@ -185,6 +188,38 @@ model SharedFile {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("shared_files")
+}
+
+model Forum {
+  id          String @id @default(uuid()) @map("id")
+  name        String
+  description String
+  posts       Post[]
+
+  createdBy   User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdById String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("forums")
+}
+
+model Post {
+  id      String @id @default(uuid()) @map("id")
+  title   String
+  content String @db.Text
+
+  forum   Forum  @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  forumId String
+
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("posts")
 }
 
 enum UserRole {

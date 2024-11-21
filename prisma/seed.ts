@@ -4,9 +4,17 @@ import { PrismaClient, UserRole } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.post.deleteMany();
+  await prisma.forum.deleteMany();
+  await prisma.sharedFile.deleteMany();
+  await prisma.proposalReview.deleteMany();
+  await prisma.projectProposal.deleteMany();
+  await prisma.eventRegistration.deleteMany();
+  await prisma.eventSession.deleteMany();
+  await prisma.event.deleteMany();
   await prisma.user.deleteMany();
 
-  await prisma.user.create({
+  const admin = await prisma.user.create({
     data: {
       firstName: "Admin",
       lastName: "User",
@@ -313,6 +321,32 @@ async function main() {
           },
         ],
       },
+    },
+  });
+
+  // add sample forums
+  await prisma.forum.create({
+    data: {
+      name: "AI Research Discussion",
+      description:
+        "A place to discuss artificial intelligence research, methodologies, and breakthroughs",
+      createdById: admin.id,
+    },
+  });
+
+  await prisma.forum.create({
+    data: {
+      name: "Startup Ecosystem",
+      description: "Connect with founders, investors, and discuss startup opportunities",
+      createdById: organizer.id,
+    },
+  });
+
+  await prisma.forum.create({
+    data: {
+      name: "Blockchain Technology",
+      description: "Discussions about blockchain, cryptocurrencies, and decentralized systems",
+      createdById: organizer.id,
     },
   });
 }
