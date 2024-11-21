@@ -8,90 +8,133 @@ import moment from "moment";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { User } from "@/types/user";
+import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface EventRegistration {
   id: number;
-  event_id: number;
-  session_id: number;
-  user_id: number;
-  booking_date: Date;
+  eventId: number;
+  sessionId: number;
+  userId: number;
+  bookingDate: Date;
+  event: Event;
+  session: EventSession;
 }
 
 interface Event {
   id: number;
   title: string;
   description: string;
-  start_date: Date;
-  end_date: Date;
+  startDate: Date;
+  endDate: Date;
   location: string;
-  is_virtual: boolean;
-  max_attendees: number;
-  registration_deadline: Date;
+  isVirtual: boolean;
+  maxAttendees: number;
+  registrationDeadline: Date;
   status: string;
   sessions: EventSession[];
 }
 
 interface EventSession {
   id: number;
-  event_id: number;
+  eventId: number;
   title: string;
   description: string;
-  start_time: Date;
-  end_time: Date;
+  startTime: Date;
+  endTime: Date;
   location: string;
-  max_attendees: number;
+  maxAttendees: number;
 }
 
 export default function ReservationsPage() {
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
 
+  // Fetch current user
   useEffect(() => {
-    const storedRegistrations = localStorage.getItem("registrations");
-    const storedEvents = localStorage.getItem("events");
+    const fetchUser = async () => {
+      try {
+        const response = await fetch("/api/user/profile");
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+        } else {
+          router.push("/login");
+        }
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+        router.push("/login");
+      }
+    };
 
-    if (storedRegistrations) {
-      setRegistrations(
-        JSON.parse(storedRegistrations, (key, value) => {
-          if (key === "booking_date") {
-            return new Date(value);
-          }
-          return value;
-        }),
-      );
+    fetchUser();
+  }, [router]);
+
+  // Fetch reservations
+  useEffect(() => {
+    const fetchReservations = async () => {
+      if (!user) return;
+
+      try {
+        const response = await fetch("/api/reservations");
+        if (!response.ok) {
+          throw new Error("Failed to fetch reservations");
+        }
+        const data = await response.json();
+        setRegistrations(data);
+      } catch (error) {
+        console.error("Error fetching reservations:", error);
+        toast.error("Failed to fetch reservations");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchReservations();
     }
-
-    if (storedEvents) {
-      setEvents(
-        JSON.parse(storedEvents, (key, value) => {
-          if (
-            key === "start_date" ||
-            key === "end_date" ||
-            key === "registration_deadline" ||
-            key === "start_time" ||
-            key === "end_time"
-          ) {
-            return new Date(value);
-          }
-          return value;
-        }),
-      );
-    }
-  }, []);
-
-  const getEventDetails = (eventId: number) => {
-    return events.find((event) => event.id === eventId);
-  };
-
-  const getSessionDetails = (eventId: number, sessionId: number) => {
-    const event = getEventDetails(eventId);
-    return event?.sessions.find((session) => session.id === sessionId);
-  };
+  }, [user]);
 
   const handleBackToEvents = () => {
     router.push("/events");
   };
+
+  const handleCancelReservation = async (registrationId: number) => {
+    try {
+      const response = await fetch("/api/reservations", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ registrationId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to cancel reservation");
+      }
+
+      // Update the local state to remove the cancelled registration
+      setRegistrations((prev) =>
+        prev.filter((registration) => registration.id !== registrationId)
+      );
+      
+      toast.success("Reservation cancelled successfully");
+    } catch (error) {
+      console.error("Error cancelling reservation:", error);
+      toast.error("Failed to cancel reservation");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-4 text-center">
+        <p>Loading reservations...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4">
@@ -104,45 +147,61 @@ export default function ReservationsPage() {
 
       {registrations.length > 0 ? (
         <ScrollArea className="h-[calc(100vh-200px)] pr-4">
-          {registrations.map((registration) => {
-            const event = getEventDetails(registration.event_id);
-            const session = getSessionDetails(registration.event_id, registration.session_id);
-
-            if (!event || !session) {
-              return null;
-            }
-
-            return (
-              <Card key={registration.id} className="mb-4 bg-white shadow-lg">
-                <CardHeader>
+          {registrations.map((registration) => (
+            <Card key={registration.id} className="mb-4 bg-white shadow-lg">
+              <CardHeader>
+                <div className="flex justify-between items-center">
                   <CardTitle className="text-xl font-semibold text-blue-700">
-                    {event.title} - {session.title}
+                    {registration.event.title} - {registration.session.title}
                   </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-600">{event.description}</p>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <CalendarIcon className="w-4 h-4 mr-2" />
-                      {moment(session.start_time).format("MMM D, YYYY")}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <ClockIcon className="w-4 h-4 mr-2" />
-                      {moment(session.start_time).format("HH:mm")} -{" "}
-                      {moment(session.end_time).format("HH:mm")}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <MapPinIcon className="w-4 h-4 mr-2" />
-                      {session.location}
-                    </div>
-                    <p className="text-sm font-semibold text-blue-700">
-                      Booked on: {moment(registration.booking_date).format("MMM D, YYYY HH:mm")}
-                    </p>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm">
+                        Cancel Reservation
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to cancel this reservation? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>No, keep it</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleCancelReservation(registration.id)}
+                        >
+                          Yes, cancel it
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">{registration.event.description}</p>
+                  <div className="flex items-center text-sm text-gray-600">
+                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    {moment(registration.session.startTime).format("MMM D, YYYY")}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  <div className="flex items-center text-sm text-gray-600">
+                    <ClockIcon className="w-4 h-4 mr-2" />
+                    {moment(registration.session.startTime).format("HH:mm")} -{" "}
+                    {moment(registration.session.endTime).format("HH:mm")}
+                  </div>
+                  <div className="flex items-center text-sm text-gray-600">
+                    <MapPinIcon className="w-4 h-4 mr-2" />
+                    {registration.session.location}
+                  </div>
+                  <p className="text-sm font-semibold text-blue-700">
+                    Booked on: {moment(registration.bookingDate).format("MMM D, YYYY HH:mm")}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </ScrollArea>
       ) : (
         <Card className="bg-white shadow-lg p-6 text-center">

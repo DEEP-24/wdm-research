@@ -1,47 +1,30 @@
-import { getCurrentUser } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { NextResponse } from "next/server";
+import { getCurrentUser } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { NextResponse } from 'next/server';
 
-export async function POST(request: Request) {
-  try {
-    const user = await getCurrentUser();
+export async function POST(request: Request){
+  try{
+    const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { eventId, sessionId } = await request.json();
+    const data = await request.json();
 
-    const existingRegistration = await db.eventRegistration.findFirst({
-      where: {
-        eventId,
-        sessionId,
-        userId: user.id,
-      },
-    });
-
-    if (existingRegistration) {
-      return NextResponse.json(
-        { error: "You are already registered for this session" },
-        { status: 400 },
-      );
-    }
-
-    const registration = await db.eventRegistration.create({
+    const reservation = await db.eventRegistration.create({
       data: {
-        eventId,
-        sessionId,
         userId: user.id,
+        eventId: data.eventId,
+        sessionId: data.sessionId,
       },
-      include: {
-        event: true,
-        session: true,
-        user: true,
-      },
-    });
+    })
 
-    return NextResponse.json(registration);
+    return NextResponse.json(reservation);
   } catch (error: unknown) {
-    console.error("Failed to register for event:", error);
-    return NextResponse.json({ error: "Failed to register for event" }, { status: 500 });
+  console.error("Failed to create reservations:", error);
+  return NextResponse.json({ error: "Failed to create reservation" }, { status: 500 });
   }
 }
+
+
+

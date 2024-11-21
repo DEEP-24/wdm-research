@@ -6,6 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,15 +26,14 @@ import type { Event, EventRegistration } from "@/types/event";
 import type { User } from "@/types/user";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UserRole } from "@prisma/client";
-import { format } from "date-fns";
 import {
+  AlertCircle,
   ClockIcon,
   MapPinIcon,
   Pencil,
   PlusIcon,
   TrashIcon,
   UsersIcon,
-  AlertCircle,
 } from "lucide-react";
 import moment from "moment";
 import { useRouter } from "next/navigation";
@@ -42,7 +42,6 @@ import { Calendar, type View, momentLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const localizer = momentLocalizer(moment);
 
@@ -1051,11 +1050,12 @@ export default function EventsPage() {
       }
 
       try {
-        const response = await fetch(`/api/events/register?userId=${user.id}`);
+        const response = await fetch(`/api/reservations`);
         if (!response.ok) {
           throw new Error("Failed to fetch registrations");
         }
         const data = await response.json();
+        console.log('Fetched registrations:', data);
         setRegistrations(data);
       } catch (error) {
         console.error("Failed to fetch registrations:", error);
@@ -1174,8 +1174,12 @@ export default function EventsPage() {
     }
   };
 
-  const isSessionRegistered = (eventId: string, sessionId: string) => {
-    return registrations.some((reg) => reg.eventId === eventId && reg.sessionId === sessionId);
+  const isSessionRegistered = (eventId: number | string, sessionId: number | string) => {
+    return registrations.some(
+      (reg) => {
+        return reg.eventId === (eventId) && reg.sessionId === (sessionId);
+      }
+    );
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -1755,7 +1759,7 @@ export default function EventsPage() {
                               </div>
                               {isSessionRegistered(selectedEvent.id, session.id) ? (
                                 <Badge className="mt-2" variant="secondary">
-                                  Registered
+                                  Already Reserved
                                 </Badge>
                               ) : user?.role === UserRole.USER ? (
                                 <Button
