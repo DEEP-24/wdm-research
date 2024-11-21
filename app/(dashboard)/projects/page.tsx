@@ -22,199 +22,233 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@/types/user";
-import { EyeIcon, MessageCircleIcon, PaperclipIcon, SendIcon } from "lucide-react";
+import { UserRole, ProposalStatus } from "@prisma/client";
+import { EyeIcon, MessageCircleIcon, PaperclipIcon, SendIcon, Pencil, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
-interface Attachment {
-  name: string;
-  type: string;
-}
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ProjectProposal {
-  id: number;
-  user_id: number;
+  id: string;
+  userId: string;
   title: string;
-  description: string;
-  status: "Submitted" | "Under Review" | "Approved" | "Rejected";
-  submitted_at: string;
-  attachments: Attachment[];
+  description: string | null;
+  status: "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+  submittedAt: string;
+  attachments: string | null;
+  proposalReviews: ProposalReview[];
+  user: {
+    firstName: string;
+    lastName: string;
+  };
 }
 
 interface ProposalReview {
-  id: number;
-  proposal_id: number;
-  reviewer_id: number;
-  feedback: string;
-  reviewed_at: string;
+  id: string;
+  proposalId: string;
+  reviewerId: string;
+  feedback: string | null;
+  reviewedAt: string;
+  reviewer: {
+    firstName: string;
+    lastName: string;
+  };
 }
 
-const mockProposals: ProjectProposal[] = [
-  {
-    id: 1,
-    user_id: 1,
-    title: "AI-powered Climate Change Prediction Model",
-    description:
-      "Developing an advanced AI model to predict climate change impacts with higher accuracy.",
-    status: "Under Review",
-    submitted_at: "2023-06-15T10:30:00Z",
-    attachments: [
-      { name: "climate_model.pdf", type: "application/pdf" },
-      {
-        name: "data_sources.xlsx",
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      },
-    ],
-  },
-  {
-    id: 2,
-    user_id: 2,
-    title: "Quantum Encryption for Secure Communication",
-    description:
-      "Implementing quantum encryption techniques for ultra-secure communication channels.",
-    status: "Approved",
-    submitted_at: "2023-06-10T14:45:00Z",
-    attachments: [
-      { name: "quantum_encryption_whitepaper.pdf", type: "application/pdf" },
-      {
-        name: "prototype_results.docx",
-        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      },
-      {
-        name: "budget_estimate.xlsx",
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      },
-    ],
-  },
-  {
-    id: 3,
-    user_id: 3,
-    title: "Sustainable Urban Agriculture System",
-    description:
-      "Designing a scalable and sustainable urban agriculture system using vertical farming techniques.",
-    status: "Submitted",
-    submitted_at: "2023-06-20T09:15:00Z",
-    attachments: [
-      { name: "urban_farm_design.jpg", type: "image/jpeg" },
-      { name: "crop_yield_projections.pdf", type: "application/pdf" },
-    ],
-  },
-];
-
-const mockReviews: ProposalReview[] = [
-  {
-    id: 1,
-    proposal_id: 1,
-    reviewer_id: 3,
-    feedback: "Interesting concept. Please provide more details on the AI model architecture.",
-    reviewed_at: "2023-06-16T09:00:00Z",
-  },
-  {
-    id: 2,
-    proposal_id: 2,
-    reviewer_id: 4,
-    feedback: "Excellent proposal. Approved for further development.",
-    reviewed_at: "2023-06-12T11:30:00Z",
-  },
-];
+interface AttachmentInput {
+  name: string;
+  url: string;
+}
 
 export default function ProjectsPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [proposals, setProposals] = useState<ProjectProposal[]>([]);
-  const [reviews, setReviews] = useState<ProposalReview[]>([]);
   const [newProposal, setNewProposal] = useState<Partial<ProjectProposal>>({
     title: "",
     description: "",
-    attachments: [],
+    attachments: "[]",
   });
+  const [viewProposal, setViewProposal] = useState<ProjectProposal | null>(null);
+  const [proposalToEdit, setProposalToEdit] = useState<ProjectProposal | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedProposal, setSelectedProposal] = useState<ProjectProposal | null>(null);
+  const [attachmentInput, setAttachmentInput] = useState<AttachmentInput>({
+    name: "",
+    url: "",
+  });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [proposalToDelete, setProposalToDelete] = useState<ProjectProposal | null>(null);
   const router = useRouter();
 
+  const fetchProposals = async () => {
+    try {
+      const res = await fetch("/api/proposals");
+      if (!res.ok) {
+        throw new Error("Failed to fetch proposals");
+      }
+      const data = await res.json();
+
+      if (currentUser?.role === UserRole.USER) {
+        setProposals(
+          data.filter((proposal: ProjectProposal) => proposal.userId === currentUser.id),
+        );
+      } else {
+        setProposals(data);
+      }
+    } catch (_error) {
+      toast.error("Failed to fetch proposals");
+    }
+  };
+
   useEffect(() => {
-    const userString = localStorage.getItem("currentUser");
-    if (userString) {
-      setCurrentUser(JSON.parse(userString));
-    } else {
-      router.push("/login");
-    }
+    const fetchUser = async () => {
+      try {
+        const response = await fetch("/api/auth/user");
+        if (!response.ok) {
+          throw new Error("Failed to fetch user");
+        }
+        const userData = await response.json();
+        setCurrentUser(userData);
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+        router.push("/login");
+      }
+    };
 
-    const storedProposals = localStorage.getItem("projectProposals");
-    if (storedProposals) {
-      const parsedProposals = JSON.parse(storedProposals);
-      setProposals(parsedProposals);
-    } else {
-      setProposals(mockProposals);
-      localStorage.setItem("projectProposals", JSON.stringify(mockProposals));
-    }
-
-    const storedReviews = localStorage.getItem("proposalReviews");
-    if (storedReviews) {
-      setReviews(JSON.parse(storedReviews));
-    } else {
-      setReviews(mockReviews);
-      localStorage.setItem("proposalReviews", JSON.stringify(mockReviews));
-    }
+    fetchUser();
   }, [router]);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchProposals();
+    }
+  }, [currentUser]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setNewProposal((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newAttachments = Array.from(files).map((file) => ({
-        name: file.name,
-        type: file.type,
-      }));
+  const handleAddAttachment = () => {
+    if (attachmentInput.name && attachmentInput.url) {
+      const currentAttachments = getAttachments(newProposal.attachments);
+      const updatedAttachments = [...currentAttachments, attachmentInput];
       setNewProposal((prev) => ({
         ...prev,
-        attachments: [...(prev.attachments || []), ...newAttachments],
+        attachments: JSON.stringify(updatedAttachments),
       }));
+      setAttachmentInput({ name: "", url: "" }); // Reset input
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentUser) {
-      const proposal: ProjectProposal = {
-        ...(newProposal as ProjectProposal),
-        id: Date.now(),
-        user_id: currentUser.id,
-        status: "Submitted",
-        submitted_at: new Date().toISOString(),
-        attachments: newProposal.attachments || [], // Ensure attachments is always an array
-      };
-      const updatedProposals = [...proposals, proposal];
-      setProposals(updatedProposals);
-      localStorage.setItem("projectProposals", JSON.stringify(updatedProposals));
-      setNewProposal({ title: "", description: "", attachments: [] });
+    try {
+      const res = await fetch(`/api/proposals${isEditMode ? `/${proposalToEdit?.id}` : ""}`, {
+        method: isEditMode ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newProposal),
+      });
+
+      if (!res.ok) {
+        throw new Error(isEditMode ? "Failed to update proposal" : "Failed to create proposal");
+      }
+
+      await fetchProposals();
+      setNewProposal({ title: "", description: "", attachments: "[]" });
       setIsDialogOpen(false);
-      toast.success("Project proposal submitted successfully!");
+      setIsEditMode(false);
+      setProposalToEdit(null);
+      toast.success(
+        isEditMode ? "Proposal updated successfully!" : "Project proposal submitted successfully!",
+      );
+    } catch (_error) {
+      toast.error(isEditMode ? "Failed to update proposal" : "Failed to submit proposal");
     }
   };
 
-  const handleReview = (proposalId: number, feedback: string) => {
-    if (currentUser) {
-      const newReview: ProposalReview = {
-        id: Date.now(),
-        proposal_id: proposalId,
-        reviewer_id: currentUser.id,
-        feedback,
-        reviewed_at: new Date().toISOString(),
-      };
-      const updatedReviews = [...reviews, newReview];
-      setReviews(updatedReviews);
-      localStorage.setItem("proposalReviews", JSON.stringify(updatedReviews));
-      toast.success("Review submitted successfully");
+  const getProposalReviews = (proposalId: string) => {
+    const proposal = proposals.find((p) => p.id === proposalId);
+    return proposal?.proposalReviews || [];
+  };
+
+  const getAttachments = (
+    attachmentsString: string | null | undefined,
+  ): Array<{ name: string; url: string }> => {
+    if (!attachmentsString) {
+      return [];
+    }
+    try {
+      return JSON.parse(attachmentsString);
+    } catch {
+      return [];
     }
   };
 
-  const getProposalReviews = (proposalId: number) => {
-    return reviews.filter((review) => review.proposal_id === proposalId);
+  const handleEdit = (proposal: ProjectProposal) => {
+    setNewProposal({
+      title: proposal.title,
+      description: proposal.description,
+      attachments: proposal.attachments || "[]",
+    });
+    setProposalToEdit(proposal);
+    setIsEditMode(true);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async (proposalId: string) => {
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete proposal");
+      }
+
+      await fetchProposals();
+      setProposalToDelete(null);
+      toast.success("Proposal deleted successfully!");
+    } catch (_error) {
+      toast.error("Failed to delete proposal");
+    }
+  };
+
+  const handleStatusChange = async (proposalId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update status");
+      }
+
+      await fetchProposals();
+      toast.success("Status updated successfully!");
+    } catch (_error) {
+      toast.error("Failed to update status");
+    }
   };
 
   if (!currentUser) {
@@ -225,16 +259,30 @@ export default function ProjectsPage() {
     <div className="container mx-auto p-6 space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-blue-700">Project Proposals</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsDialogOpen(false);
+              setNewProposal({ title: "", description: "", attachments: "[]" });
+              setAttachmentInput({ name: "", url: "" });
+              setIsEditMode(false);
+              setProposalToEdit(null);
+            }
+          }}
+        >
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">
+            <Button
+              onClick={() => setIsDialogOpen(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+            >
               <SendIcon className="w-4 h-4 mr-2" /> Submit New Proposal
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px] bg-white">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold text-blue-700">
-                Submit New Proposal
+                {isEditMode ? "Edit Proposal" : "Submit New Proposal"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -258,40 +306,145 @@ export default function ProjectsPage() {
                 <Textarea
                   id="description"
                   name="description"
-                  value={newProposal.description}
+                  value={newProposal.description || ""}
                   onChange={handleInputChange}
                   required
                   className="border-blue-200 focus:border-blue-400"
                 />
               </div>
               <div>
-                <Label htmlFor="attachment" className="text-blue-600">
-                  Attachments
-                </Label>
-                <Input
-                  id="attachment"
-                  name="attachment"
-                  type="file"
-                  onChange={handleFileChange}
-                  className="border-blue-200 focus:border-blue-400"
-                  multiple
-                />
-              </div>
-              {newProposal.attachments && newProposal.attachments.length > 0 && (
-                <div>
-                  <Label className="text-blue-600">Selected Files:</Label>
-                  <ul className="list-disc pl-5">
-                    {newProposal.attachments.map((file, index) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                      <li key={index} className="text-sm">
-                        {file.name}
-                      </li>
-                    ))}
-                  </ul>
+                <Label className="text-blue-600">Attachments</Label>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="attachmentName" className="text-sm text-gray-600">
+                        Name
+                      </Label>
+                      <Input
+                        id="attachmentName"
+                        value={attachmentInput.name}
+                        onChange={(e) =>
+                          setAttachmentInput((prev) => ({ ...prev, name: e.target.value }))
+                        }
+                        placeholder="Document name"
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="attachmentUrl" className="text-sm text-gray-600">
+                        URL
+                      </Label>
+                      <Input
+                        id="attachmentUrl"
+                        value={attachmentInput.url}
+                        onChange={(e) =>
+                          setAttachmentInput((prev) => ({ ...prev, url: e.target.value }))
+                        }
+                        placeholder="https://..."
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddAttachment}
+                    disabled={!attachmentInput.name || !attachmentInput.url}
+                    className="w-full"
+                  >
+                    Add Attachment
+                  </Button>
                 </div>
-              )}
+
+                {newProposal.attachments && getAttachments(newProposal.attachments).length > 0 && (
+                  <div className="mt-4">
+                    <Label className="text-blue-600">Current Attachments:</Label>
+                    <ul className="list-disc pl-5 space-y-2">
+                      {getAttachments(newProposal.attachments).map(
+                        (file: { name: string; url: string }, index: number) => (
+                          <li
+                            key={`attachment-${
+                              // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                              index
+                            }`}
+                            className="text-sm flex items-center gap-2 bg-gray-50 p-2 rounded"
+                          >
+                            <div className="flex-1 grid grid-cols-2 gap-2">
+                              <Input
+                                type="text"
+                                defaultValue={file.name}
+                                onBlur={(e) => {
+                                  const currentAttachments = [
+                                    ...getAttachments(newProposal.attachments),
+                                  ];
+                                  const updatedAttachments = currentAttachments.map((att, idx) => {
+                                    if (idx === index) {
+                                      return { ...att, name: e.target.value || "Untitled" };
+                                    }
+                                    return att;
+                                  });
+                                  setNewProposal((prev) => ({
+                                    ...prev,
+                                    attachments: JSON.stringify(updatedAttachments),
+                                  }));
+                                }}
+                                className="flex-1 h-8"
+                                placeholder="Name"
+                              />
+                              <Input
+                                type="text"
+                                defaultValue={file.url}
+                                onBlur={(e) => {
+                                  const currentAttachments = [
+                                    ...getAttachments(newProposal.attachments),
+                                  ];
+                                  const updatedAttachments = currentAttachments.map((att, idx) => {
+                                    if (idx === index) {
+                                      return { ...att, url: e.target.value };
+                                    }
+                                    return att;
+                                  });
+                                  setNewProposal((prev) => ({
+                                    ...prev,
+                                    attachments: JSON.stringify(updatedAttachments),
+                                  }));
+                                }}
+                                className="flex-1 h-8"
+                                placeholder="URL"
+                              />
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                                onClick={() => {
+                                  const currentAttachments = [
+                                    ...getAttachments(newProposal.attachments),
+                                  ];
+                                  const updatedAttachments = currentAttachments.filter(
+                                    (_, i) => i !== index,
+                                  );
+                                  setNewProposal((prev) => ({
+                                    ...prev,
+                                    attachments: JSON.stringify(updatedAttachments),
+                                  }));
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
               <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                Submit Proposal
+                {isEditMode ? "Update Proposal" : "Submit Proposal"}
               </Button>
             </form>
           </DialogContent>
@@ -300,94 +453,41 @@ export default function ProjectsPage() {
 
       <Card className="bg-white shadow-lg">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold text-blue-700">All Projects</CardTitle>
+          <CardTitle className="text-xl font-semibold text-blue-700">
+            {currentUser.role === UserRole.USER ? "My Projects" : "All Projects"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Submitted By</TableHead>
-                <TableHead>Submitted At</TableHead>
-                <TableHead>Attachments</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {proposals.map((proposal) => (
-                <TableRow key={proposal.id}>
-                  <TableCell>{proposal.title}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        proposal.status === "Approved"
-                          ? "default"
-                          : proposal.status === "Rejected"
-                            ? "destructive"
-                            : "secondary"
-                      }
-                    >
-                      {proposal.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>User ID: {proposal.user_id}</TableCell>
-                  <TableCell>{new Date(proposal.submitted_at).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    {proposal.attachments && proposal.attachments.length > 0 ? (
-                      <div className="flex items-center text-sm text-blue-600">
-                        <PaperclipIcon className="w-4 h-4 mr-2" />
-                        {proposal.attachments.length} file(s)
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">No attachments</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-blue-600 hover:text-blue-800"
-                      onClick={() => setSelectedProposal(proposal)}
-                    >
-                      <EyeIcon className="w-4 h-4 mr-2" /> View Details
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {currentUser.role === "admin" && (
-        <Card className="bg-white shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-xl font-semibold text-blue-700">
-              All Proposals (Admin View)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+          {proposals.length === 0 ? (
+            <div className="text-center py-6 text-gray-500">
+              <PaperclipIcon className="w-10 h-10 mx-auto mb-2 opacity-50" />
+              <p>No project proposals found.</p>
+              <p className="text-sm">Submit a new proposal to get started!</p>
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
-                  <TableHead>Submitted By</TableHead>
                   <TableHead>Status</TableHead>
+                  {currentUser?.role !== "USER" && <TableHead>Submitted By</TableHead>}
+                  <TableHead>Submitted At</TableHead>
+                  <TableHead>Attachments</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {proposals.map((proposal) => (
                   <TableRow key={proposal.id}>
-                    <TableCell>{proposal.title}</TableCell>
-                    <TableCell>User ID: {proposal.user_id}</TableCell>
+                    <TableCell>
+                      <span>{proposal.title}</span>
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={
-                          proposal.status === "Approved"
+                          proposal.status === "APPROVED"
                             ? "default"
-                            : proposal.status === "Rejected"
+                            : proposal.status === "REJECTED"
                               ? "destructive"
                               : "secondary"
                         }
@@ -395,72 +495,131 @@ export default function ProjectsPage() {
                         {proposal.status}
                       </Badge>
                     </TableCell>
+                    {currentUser?.role !== "USER" && (
+                      <TableCell>
+                        {proposal.user.firstName} {proposal.user.lastName}
+                      </TableCell>
+                    )}
+                    <TableCell>{new Date(proposal.submittedAt).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-blue-600 hover:text-blue-800"
-                        onClick={() => {
-                          const feedback = prompt("Enter feedback for this proposal:");
-                          if (feedback) {
-                            handleReview(proposal.id, feedback);
-                          }
-                        }}
-                      >
-                        <MessageCircleIcon className="w-4 h-4 mr-2" /> Add Review
-                      </Button>
+                      {proposal.attachments ? (
+                        <div className="flex items-center text-sm text-blue-600">
+                          <PaperclipIcon className="w-4 h-4 mr-2" />
+                          {getAttachments(proposal.attachments).length} file(s)
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No attachments</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-blue-600 hover:text-blue-800"
+                          onClick={() => setViewProposal(proposal)}
+                        >
+                          <EyeIcon className="w-4 h-4 mr-2" /> View
+                        </Button>
+
+                        {currentUser?.role === "ADMIN" ? (
+                          <Select
+                            defaultValue={proposal.status}
+                            onValueChange={(value) => handleStatusChange(proposal.id, value)}
+                          >
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue placeholder="Change status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.values(ProposalStatus).map((status) => (
+                                <SelectItem key={status} value={status}>
+                                  {status.charAt(0) +
+                                    status.slice(1).toLowerCase().replace("_", " ")}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          currentUser?.id === proposal.userId && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-amber-600 hover:text-amber-800"
+                                onClick={() => handleEdit(proposal)}
+                              >
+                                <Pencil className="w-4 h-4 mr-2" /> Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:text-red-800"
+                                onClick={() => setProposalToDelete(proposal)}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                              </Button>
+                            </>
+                          )
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
-      {selectedProposal && (
-        <Dialog open={!!selectedProposal} onOpenChange={() => setSelectedProposal(null)}>
+      {viewProposal && (
+        <Dialog open={!!viewProposal} onOpenChange={() => setViewProposal(null)}>
           <DialogContent className="sm:max-w-[600px] bg-white">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold text-blue-700">
-                {selectedProposal.title}
+                {viewProposal.title}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <p>{selectedProposal.description}</p>
+              <p>{viewProposal.description}</p>
               <div className="text-sm text-gray-600">
-                Status: <Badge variant="secondary">{selectedProposal.status}</Badge>
+                Status: <Badge variant="secondary">{viewProposal.status}</Badge>
               </div>
               <div className="text-sm text-gray-600">
-                Submitted by: User ID {selectedProposal.user_id}
+                Submitted by: {viewProposal.user.firstName} {viewProposal.user.lastName}
               </div>
               <div className="text-sm text-gray-600">
-                Submitted: {new Date(selectedProposal.submitted_at).toLocaleString()}
+                Submitted: {new Date(viewProposal.submittedAt).toLocaleString()}
               </div>
-              {selectedProposal.attachments.length > 0 && (
+              {viewProposal.attachments && viewProposal.attachments.length > 0 && (
                 <div>
                   <h3 className="font-semibold text-blue-700">Attachments:</h3>
                   <ul className="list-disc pl-5">
-                    {selectedProposal.attachments.map((attachment, index) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                      <li key={index} className="text-blue-600 flex items-center">
-                        <PaperclipIcon className="w-4 h-4 mr-2" />
-                        {attachment.name} ({attachment.type})
-                      </li>
-                    ))}
+                    {getAttachments(viewProposal.attachments).map(
+                      (attachment: { url: string; name: string }, index: number) => (
+                        <li
+                          key={`attachment-${viewProposal.id}-${index}`}
+                          className="text-blue-600 flex items-center"
+                        >
+                          <PaperclipIcon className="w-4 h-4 mr-2" />
+                          <a href={attachment.url} target="_blank" rel="noopener noreferrer">
+                            {attachment.name || `Attachment ${index + 1}`}
+                          </a>
+                        </li>
+                      ),
+                    )}
                   </ul>
                 </div>
               )}
               <div className="space-y-2">
                 <h3 className="font-semibold text-blue-700">Reviews:</h3>
-                {getProposalReviews(selectedProposal.id).map((review) => (
+                {getProposalReviews(viewProposal.id).map((review: ProposalReview) => (
                   <div key={review.id} className="bg-gray-100 p-3 rounded">
                     <p className="text-sm">{review.feedback}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Reviewed by: User ID {review.reviewer_id}
+                      Reviewed by: {review.reviewer.firstName} {review.reviewer.lastName}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Reviewed on: {new Date(review.reviewed_at).toLocaleString()}
+                      Reviewed on: {new Date(review.reviewedAt).toLocaleString()}
                     </p>
                   </div>
                 ))}
@@ -468,6 +627,29 @@ export default function ProjectsPage() {
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {proposalToDelete && (
+        <AlertDialog open={!!proposalToDelete} onOpenChange={() => setProposalToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the proposal &quot;
+                {proposalToDelete.title}&quot; and all its associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => handleDelete(proposalToDelete.id)}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

@@ -1,9 +1,11 @@
+import type { UserRole } from "@prisma/client";
+
 export type User = {
   id: string;
   firstName: string;
   lastName: string;
   email: string;
-  role: "ADMIN" | "ORGANIZER" | "INVESTOR" | "USER";
+  role: UserRole;
   researchInterests: string;
   expertise: string;
   phone: string;

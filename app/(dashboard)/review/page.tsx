@@ -28,27 +28,30 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-interface Attachment {
-  name: string;
-  type: string;
-}
-
 interface ProjectProposal {
-  id: number;
-  user_id: number;
+  id: string;
+  userId: string;
   title: string;
-  description: string;
-  status: "Submitted" | "Under Review" | "Approved" | "Rejected";
-  submitted_at: string;
-  attachments: Attachment[];
+  description: string | null;
+  status: "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+  submittedAt: string;
+  attachments: string | null;
+  user: {
+    firstName: string;
+    lastName: string;
+  };
 }
 
 interface ProposalReview {
-  id: number;
-  proposal_id: number;
-  reviewer_id: number;
-  feedback: string;
-  reviewed_at: string;
+  id: string;
+  projectProposalId: string;
+  reviewerId: string;
+  feedback: string | null;
+  reviewedAt: string;
+  reviewer?: {
+    firstName: string;
+    lastName: string;
+  };
 }
 
 export default function AllProjectsPage() {
@@ -61,44 +64,86 @@ export default function AllProjectsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const userString = localStorage.getItem("currentUser");
-    if (userString) {
-      setCurrentUser(JSON.parse(userString));
-    } else {
-      router.push("/login");
-    }
+    const fetchData = async () => {
+      try {
+        const userResponse = await fetch("/api/auth/user");
+        if (!userResponse.ok) {
+          router.push("/login");
+          return;
+        }
+        const userData = await userResponse.json();
+        setCurrentUser(userData);
 
-    const storedProposals = localStorage.getItem("projectProposals");
-    if (storedProposals) {
-      setProposals(JSON.parse(storedProposals));
-    }
+        const proposalsResponse = await fetch("/api/proposals");
+        if (proposalsResponse.ok) {
+          const proposalsData = await proposalsResponse.json();
+          setProposals(proposalsData);
+        }
 
-    const storedReviews = localStorage.getItem("proposalReviews");
-    if (storedReviews) {
-      setReviews(JSON.parse(storedReviews));
-    }
+        const reviewsResponse = await fetch("/api/proposals/reviews");
+        if (reviewsResponse.ok) {
+          const reviewsData = await reviewsResponse.json();
+          setReviews(reviewsData);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load data");
+      }
+    };
+
+    fetchData();
   }, [router]);
 
-  const handleAddFeedback = () => {
+  const handleAddFeedback = async () => {
     if (currentUser && selectedProposal && newFeedback.trim()) {
-      const newReview: ProposalReview = {
-        id: Date.now(),
-        proposal_id: selectedProposal.id,
-        reviewer_id: currentUser.id,
-        feedback: newFeedback.trim(),
-        reviewed_at: new Date().toISOString(),
-      };
-      const updatedReviews = [...reviews, newReview];
-      setReviews(updatedReviews);
-      localStorage.setItem("proposalReviews", JSON.stringify(updatedReviews));
-      setNewFeedback("");
-      toast.success("Feedback submitted successfully");
-      setIsDialogOpen(false); // Close the dialog
+      try {
+        const response = await fetch("/api/proposals/reviews", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            projectProposalId: selectedProposal.id,
+            reviewerId: currentUser.id,
+            feedback: newFeedback.trim(),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to submit review");
+        }
+
+        const newReview = await response.json();
+        setReviews((prev) => [...prev, newReview]);
+        setNewFeedback("");
+        toast.success("Feedback submitted successfully");
+        setIsDialogOpen(false);
+      } catch (error) {
+        console.error("Error submitting feedback:", error);
+        toast.error("Failed to submit feedback");
+      }
     }
   };
 
-  const getProposalReviews = (proposalId: number) => {
-    return reviews.filter((review) => review.proposal_id === proposalId);
+  const getProposalReviews = (proposalId: string) => {
+    return reviews.filter((review) => review.projectProposalId === proposalId);
+  };
+
+  const getAttachmentCount = (attachmentsString: string | null) => {
+    if (!attachmentsString) {
+      return 0;
+    }
+    try {
+      return JSON.parse(attachmentsString).length;
+    } catch {
+      return 0;
+    }
+  };
+
+  const hasUserSubmittedFeedback = (proposalId: string, userId: string) => {
+    return reviews.some(
+      (review) => review.projectProposalId === proposalId && review.reviewerId === userId,
+    );
   };
 
   if (!currentUser) {
@@ -114,63 +159,80 @@ export default function AllProjectsPage() {
           <CardTitle className="text-xl font-semibold text-blue-700">Proposals</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Submitted By</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Submitted At</TableHead>
-                <TableHead>Attachments</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {proposals.map((proposal) => (
-                <TableRow key={proposal.id}>
-                  <TableCell>{proposal.title}</TableCell>
-                  <TableCell>User ID: {proposal.user_id}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        proposal.status === "Approved"
-                          ? "default"
-                          : proposal.status === "Rejected"
-                            ? "destructive"
-                            : "secondary"
-                      }
-                    >
-                      {proposal.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{new Date(proposal.submitted_at).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    {proposal.attachments && proposal.attachments.length > 0 ? (
-                      <div className="flex items-center text-sm text-blue-600">
-                        <PaperclipIcon className="w-4 h-4 mr-2" />
-                        {proposal.attachments.length} file(s)
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">No attachments</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-blue-600 hover:text-blue-800"
-                      onClick={() => {
-                        setSelectedProposal(proposal);
-                        setIsDialogOpen(true);
-                      }}
-                    >
-                      <EyeIcon className="w-4 h-4 mr-2" /> View Details
-                    </Button>
-                  </TableCell>
+          {proposals.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Submitted By</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Submitted At</TableHead>
+                  <TableHead>Attachments</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {proposals.map((proposal) => (
+                  <TableRow key={proposal.id}>
+                    <TableCell>{proposal.title}</TableCell>
+                    <TableCell>
+                      {proposal.user ? (
+                        `${proposal.user.firstName} ${proposal.user.lastName}`
+                      ) : (
+                        <span className="text-gray-400">Unknown User</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          proposal.status === "APPROVED"
+                            ? "default"
+                            : proposal.status === "REJECTED"
+                              ? "destructive"
+                              : "secondary"
+                        }
+                      >
+                        {proposal.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(proposal.submittedAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {proposal.attachments ? (
+                        <div className="flex items-center text-sm text-blue-600">
+                          <PaperclipIcon className="w-4 h-4 mr-2" />
+                          {getAttachmentCount(proposal.attachments)} file(s)
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No attachments</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-blue-600 hover:text-blue-800"
+                          onClick={() => {
+                            setSelectedProposal(proposal);
+                            setIsDialogOpen(true);
+                          }}
+                        >
+                          <EyeIcon className="w-4 h-4 mr-2" /> View Details
+                        </Button>
+                        {currentUser && hasUserSubmittedFeedback(proposal.id, currentUser.id) && (
+                          <Badge variant="secondary">Feedback Submitted</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-gray-400">No project proposals available</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -190,47 +252,63 @@ export default function AllProjectsPage() {
                   Status: <Badge variant="secondary">{selectedProposal.status}</Badge>
                 </div>
                 <div className="text-sm text-gray-600">
-                  Submitted: {new Date(selectedProposal.submitted_at).toLocaleString()}
+                  Submitted: {new Date(selectedProposal.submittedAt).toLocaleString()}
                 </div>
-                {selectedProposal.attachments && selectedProposal.attachments.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-blue-700">Attachments:</h3>
-                    <ul className="list-disc pl-5">
-                      {selectedProposal.attachments.map((attachment, index) => (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                        <li key={index} className="text-sm text-blue-600">
-                          <PaperclipIcon className="w-4 h-4 inline mr-2" />
-                          {attachment.name} ({attachment.type})
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {selectedProposal.attachments &&
+                  getAttachmentCount(selectedProposal.attachments) > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-blue-700">Attachments:</h3>
+                      <ul className="list-disc pl-5">
+                        {JSON.parse(selectedProposal.attachments).map(
+                          (attachment: { name: string; type: string }, index: number) => (
+                            // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                            <li key={index} className="text-sm text-blue-600">
+                              <PaperclipIcon className="w-4 h-4 inline mr-2" />
+                              {attachment.name} ({attachment.type})
+                            </li>
+                          ),
+                        )}
+                      </ul>
+                    </div>
+                  )}
                 <div className="space-y-2">
                   <h3 className="font-semibold text-blue-700">Reviews:</h3>
-                  {getProposalReviews(selectedProposal.id).map((review) => (
-                    <div key={review.id} className="bg-gray-100 p-3 rounded">
-                      <p className="text-sm">{review.feedback}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Reviewed on: {new Date(review.reviewed_at).toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
+                  {getProposalReviews(selectedProposal.id).length > 0 ? (
+                    getProposalReviews(selectedProposal.id).map((review) => (
+                      <div key={review.id} className="bg-gray-100 p-3 rounded">
+                        <p className="text-sm">{review.feedback}</p>
+                        <div className="flex justify-between items-center">
+                          <p className="text-xs text-gray-500 mt-1">
+                            Reviewed on: {new Date(review.reviewedAt).toLocaleString()}
+                          </p>
+                          {review.reviewer && (
+                            <p className="text-xs text-gray-500">
+                              by {review.reviewer.firstName} {review.reviewer.lastName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <span className="text-gray-400">No reviews yet</span>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="newFeedback" className="text-blue-600">
-                    Add Feedback
-                  </Label>
-                  <Textarea
-                    id="newFeedback"
-                    value={newFeedback}
-                    onChange={(e) => setNewFeedback(e.target.value)}
-                    className="border-blue-200 focus:border-blue-400"
-                  />
-                  <Button onClick={handleAddFeedback} className="w-full">
-                    <MessageCircleIcon className="w-4 h-4 mr-2" /> Submit Feedback
-                  </Button>
-                </div>
+                {currentUser && !hasUserSubmittedFeedback(selectedProposal.id, currentUser.id) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="newFeedback" className="text-blue-600">
+                      Add Feedback
+                    </Label>
+                    <Textarea
+                      id="newFeedback"
+                      value={newFeedback}
+                      onChange={(e) => setNewFeedback(e.target.value)}
+                      className="border-blue-200 focus:border-blue-400"
+                    />
+                    <Button onClick={handleAddFeedback} className="w-full">
+                      <MessageCircleIcon className="w-4 h-4 mr-2" /> Submit Feedback
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           )}

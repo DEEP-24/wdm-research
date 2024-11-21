@@ -41,6 +41,10 @@ model User {
 
   registrations EventRegistration[]
 
+  projectProposals ProjectProposal[]
+
+  proposalReviews ProposalReview[]
+
   followers  Followers[] @relation("follower")
   followings Followers[] @relation("following")
 
@@ -130,12 +134,15 @@ model EventRegistration {
 
 model ProjectProposal {
   id              String           @id @default(uuid()) @map("id")
-  userId          String           @db.Char(36)
   title           String
   description     String?
-  status          String?
+  status          ProposalStatus   @default(SUBMITTED)
   submittedAt     DateTime         @default(now()) @db.Timestamp(6)
+  attachments     String?
   proposalReviews ProposalReview[]
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -144,14 +151,16 @@ model ProjectProposal {
 }
 
 model ProposalReview {
-  id         String   @id @default(uuid()) @map("id")
-  proposalId String   @db.Char(36)
-  reviewerId String   @db.Char(36)
+  id String @id @default(uuid()) @map("id")
+
   feedback   String?
   reviewedAt DateTime @default(now()) @db.Timestamp(6)
 
-  ProjectProposal   ProjectProposal? @relation(fields: [projectProposalId], references: [id])
+  projectProposal   ProjectProposal? @relation(fields: [projectProposalId], references: [id])
   projectProposalId String?
+
+  reviewer   User   @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewerId String
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -164,4 +173,11 @@ enum UserRole {
   ORGANIZER
   INVESTOR
   USER
+}
+
+enum ProposalStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
 }
