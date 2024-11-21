@@ -51,6 +51,8 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  sharedFiles SharedFile[]
+
   @@map("users")
 }
 
@@ -166,6 +168,23 @@ model ProposalReview {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("proposal_reviews")
+}
+
+model SharedFile {
+  id String @id @default(uuid()) @map("id")
+
+  customName String
+
+  uploadDate DateTime @default(now())
+  fileUrl    String
+
+  uploadedBy User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("shared_files")
 }
 
 enum UserRole {

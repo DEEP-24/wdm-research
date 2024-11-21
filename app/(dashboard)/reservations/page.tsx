@@ -10,7 +10,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { User } from "@/types/user";
 import { toast } from "sonner";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface EventRegistration {
   id: number;
@@ -76,7 +86,9 @@ export default function ReservationsPage() {
   // Fetch reservations
   useEffect(() => {
     const fetchReservations = async () => {
-      if (!user) return;
+      if (!user) {
+        return;
+      }
 
       try {
         const response = await fetch("/api/reservations");
@@ -117,10 +129,8 @@ export default function ReservationsPage() {
       }
 
       // Update the local state to remove the cancelled registration
-      setRegistrations((prev) =>
-        prev.filter((registration) => registration.id !== registrationId)
-      );
-      
+      setRegistrations((prev) => prev.filter((registration) => registration.id !== registrationId));
+
       toast.success("Reservation cancelled successfully");
     } catch (error) {
       console.error("Error cancelling reservation:", error);
@@ -164,14 +174,13 @@ export default function ReservationsPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to cancel this reservation? This action cannot be undone.
+                          Are you sure you want to cancel this reservation? This action cannot be
+                          undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>No, keep it</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleCancelReservation(registration.id)}
-                        >
+                        <AlertDialogAction onClick={() => handleCancelReservation(registration.id)}>
                           Yes, cancel it
                         </AlertDialogAction>
                       </AlertDialogFooter>
