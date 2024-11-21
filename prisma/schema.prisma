@@ -15,6 +15,8 @@ model User {
   email    String @unique
   password String
 
+  imageURL String
+
   researchInterests String
   expertise         String
 
@@ -22,13 +24,13 @@ model User {
 
   role UserRole
 
-  phone    String
-  streetNo String
-  aptNo    String
-  city     String
-  state    String
-  zipcode  String
-  dob      DateTime
+  phone   String
+  street  String
+  aptNo   String
+  city    String
+  state   String
+  zipcode String
+  dob     DateTime
 
   linkedInURL String?
   twitterURL  String?
@@ -39,10 +41,28 @@ model User {
 
   registrations EventRegistration[]
 
+  followers  Followers[] @relation("follower")
+  followings Followers[] @relation("following")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("users")
+}
+
+model Followers {
+  follower    User   @relation("follower", fields: [followerId], references: [id])
+  followerId  String
+  following   User   @relation("following", fields: [followingId], references: [id])
+  followingId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("followers")
 }
 
 model Event {
@@ -102,7 +122,41 @@ model EventRegistration {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("event_registrations")
+}
+
+model ProjectProposal {
+  id              String           @id @default(uuid()) @map("id")
+  userId          String           @db.Char(36)
+  title           String
+  description     String?
+  status          String?
+  submittedAt     DateTime         @default(now()) @db.Timestamp(6)
+  proposalReviews ProposalReview[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("project_proposals")
+}
+
+model ProposalReview {
+  id         String   @id @default(uuid()) @map("id")
+  proposalId String   @db.Char(36)
+  reviewerId String   @db.Char(36)
+  feedback   String?
+  reviewedAt DateTime @default(now()) @db.Timestamp(6)
+
+  ProjectProposal   ProjectProposal? @relation(fields: [projectProposalId], references: [id])
+  projectProposalId String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("proposal_reviews")
 }
 
 enum UserRole {

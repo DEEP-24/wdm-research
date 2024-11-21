@@ -28,6 +28,7 @@ import {
   ScanEyeIcon,
   SearchIcon,
   SendIcon,
+  User2Icon,
   UserIcon,
   XIcon,
 } from "lucide-react";
@@ -47,6 +48,7 @@ const roleBasedSidebarItems = {
     { icon: BadgeDollarSignIcon, label: "Funding Opportunities", href: "/funding-opportunities" },
     { icon: FileTextIcon, label: "Grant Applications", href: "/grant-applications" },
     { icon: HelpCircle, label: "Support", href: "/support" },
+    { icon: User2Icon, label: "Researchers", href: "/researchers" },
   ],
   admin: [
     { icon: HomeIcon, label: "Home", href: "/" },
@@ -261,10 +263,7 @@ export default function DashboardLayout({
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-2">
                   <Avatar>
-                    <AvatarImage
-                      src="/placeholder.svg?height=32&width=32"
-                      alt={currentUser.firstName}
-                    />
+                    <AvatarImage src={currentUser.imageURL} alt={currentUser.firstName} />
                     <AvatarFallback className="bg-blue-200 text-blue-700">
                       {currentUser.firstName[0]}
                       {currentUser.lastName[0]}

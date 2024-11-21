@@ -7,45 +7,51 @@ export async function GET() {
     const user = await getCurrentUser();
 
     if (!user) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userData = await db.user.findUnique({
+    const profile = await db.user.findUnique({
       where: { id: user.id },
       select: {
-        id: true,
         firstName: true,
         lastName: true,
         email: true,
-        role: true,
         researchInterests: true,
         expertise: true,
-        phone: true,
-        city: true,
-        state: true,
         linkedInURL: true,
         twitterURL: true,
         githubURL: true,
         papers: true,
+        dob: true,
+        imageURL: true,
+        phone: true,
+        street: true,
+        aptNo: true,
+        city: true,
+        state: true,
+        zipcode: true,
       },
     });
 
-    return NextResponse.json(userData);
+    return NextResponse.json(profile);
   } catch (error) {
-    console.error("Profile fetch error:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error("Error fetching profile:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
-export async function PUT(req: Request) {
+export async function PUT(request: Request) {
   try {
     const user = await getCurrentUser();
 
     if (!user) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await request.json();
+
+    // Convert dob string to Date object
+    const dobDate = body.dob ? new Date(body.dob) : undefined;
 
     const updatedUser = await db.user.update({
       where: { id: user.id },
@@ -54,19 +60,24 @@ export async function PUT(req: Request) {
         lastName: body.lastName,
         researchInterests: body.researchInterests,
         expertise: body.expertise,
-        phone: body.phone,
-        city: body.city,
-        state: body.state,
         linkedInURL: body.linkedInURL,
         twitterURL: body.twitterURL,
         githubURL: body.githubURL,
         papers: body.papers,
+        dob: dobDate,
+        imageURL: body.imageURL,
+        phone: body.phone,
+        street: body.street,
+        aptNo: body.aptNo,
+        city: body.city,
+        state: body.state,
+        zipcode: body.zipcode,
       },
     });
 
     return NextResponse.json(updatedUser);
   } catch (error) {
-    console.error("Profile update error:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    console.error("Error updating profile:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

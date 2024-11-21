@@ -25,8 +25,9 @@ export async function getCurrentUser() {
         expertise: true,
         phone: true,
         researchInterests: true,
+        imageURL: true,
         state: true,
-        streetNo: true,
+        street: true,
         zipcode: true,
       },
     });
