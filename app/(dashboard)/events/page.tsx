@@ -48,6 +48,12 @@ const localizer = momentLocalizer(moment);
 
 type ViewType = "month" | "week" | "day";
 
+// Add this type definition near the top
+type SessionTimeData = {
+  startTime: Date | null;
+  endTime: Date | null;
+};
+
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -314,32 +320,6 @@ export default function EventsPage() {
     return registrations.some((reg) => reg.eventId === eventId && reg.sessionId === sessionId);
   };
 
-  const handleUpdateEvent = async (updatedEvent: Event) => {
-    try {
-      const response = await fetch(`/api/events/${updatedEvent.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedEvent),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update event");
-      }
-
-      const updated = await response.json();
-      setEvents(events.map((event) => (event.id === updated.id ? updated : event)));
-      setIsEditEventOpen(false);
-      setEditingEvent(null);
-      setSelectedEvent(updated);
-      toast.success("Event updated successfully");
-    } catch (error) {
-      console.error("Failed to update event:", error);
-      toast.error("Failed to update event");
-    }
-  };
-
   const handleDeleteEvent = async (eventId: string) => {
     try {
       const response = await fetch(`/api/events/${eventId}`, {
@@ -390,7 +370,180 @@ export default function EventsPage() {
 
   const handleEditEvent = (event: Event) => {
     setEditingEvent(event);
+    initializeEditForm(event);
     setIsEditEventOpen(true);
+  };
+
+  // Add this function to handle edit initialization
+  const initializeEditForm = (event: Event) => {
+    // Reset any existing form state
+    reset();
+    setSavedSessions({});
+    setSavedSessionData({});
+
+    // Initialize the form with event data
+    setValue("title", event.title);
+    setValue("description", event.description || "");
+
+    // Handle dates with timezone adjustment
+    if (event.startDate) {
+      const startDate = new Date(event.startDate);
+      const adjustedStartDate = new Date(
+        startDate.getTime() - startDate.getTimezoneOffset() * 60000,
+      );
+      setValue("startDate", adjustedStartDate.toISOString().split("T")[0] as unknown as Date);
+    }
+
+    if (event.endDate) {
+      const endDate = new Date(event.endDate);
+      const adjustedEndDate = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000);
+      setValue("endDate", adjustedEndDate.toISOString().split("T")[0] as unknown as Date);
+    }
+
+    setValue("isVirtual", event.isVirtual);
+    setValue("location", event.isVirtual ? "" : event.location || "");
+    setValue("maxAttendees", event.maxAttendees || 0);
+
+    if (event.registrationDeadline) {
+      const regDeadline = new Date(event.registrationDeadline);
+      const adjustedRegDeadline = new Date(
+        regDeadline.getTime() - regDeadline.getTimezoneOffset() * 60000,
+      );
+      setValue(
+        "registrationDeadline",
+        adjustedRegDeadline.toISOString().split("T")[0] as unknown as Date,
+      );
+    }
+
+    setValue("status", event.status || "Upcoming");
+
+    // Sort sessions by startTime
+    const sortedSessions = [...event.sessions].sort((a, b) => {
+      const aTime = a.startTime ? new Date(a.startTime).getTime() : 0;
+      const bTime = b.startTime ? new Date(b.startTime).getTime() : 0;
+      return aTime - bTime;
+    });
+
+    // Initialize sessions without times
+    setValue(
+      "sessions",
+      sortedSessions.map((session) => ({
+        title: session.title,
+        description: session.description || "",
+        startTime: null as unknown as Date,
+        endTime: null as unknown as Date,
+        location: event.isVirtual ? "" : session.location || event.location || "",
+        maxAttendees: session.maxAttendees || 0,
+      })),
+    );
+
+    // Initialize session states
+    const newSessionSavedState: { [key: number]: boolean } = {};
+    const newSessionTimeData: { [key: number]: SessionTimeData } = {};
+    const newEditingSessionsState: { [key: number]: boolean } = {};
+
+    // Initialize session data
+    sortedSessions.forEach((session, index) => {
+      if (session.startTime && session.endTime) {
+        newSessionTimeData[index] = {
+          startTime: new Date(session.startTime),
+          endTime: new Date(session.endTime),
+        };
+      } else {
+        newSessionTimeData[index] = {
+          startTime: null,
+          endTime: null,
+        };
+      }
+      newSessionSavedState[index] = false;
+      newEditingSessionsState[index] = true;
+    });
+
+    // Set all state at once
+    setSavedSessionData(newSessionTimeData);
+    setSavedSessions(newSessionSavedState);
+    setEditingSessions(newEditingSessionsState);
+  };
+
+  // Add this function to handle edit submission
+  const handleEditSubmit = async (data: EventFormValues) => {
+    try {
+      // Check if all sessions are saved
+      const allSessionsSaved = fields.every((_, index) => savedSessions[index]);
+      if (!allSessionsSaved) {
+        toast.error("Please save all sessions before updating the event");
+        return;
+      }
+
+      // Check for any session time errors
+      const hasTimeErrors = Object.values(sessionTimeErrors).some((error) => error !== null);
+      if (hasTimeErrors) {
+        toast.error("Please fix all session time conflicts before updating the event");
+        return;
+      }
+
+      if (!editingEvent) {
+        return;
+      }
+
+      // Format the data
+      const formattedData = {
+        id: editingEvent.id,
+        title: data.title,
+        description: data.description,
+        startDate: new Date(data.startDate).toISOString(),
+        endDate: new Date(data.endDate).toISOString(),
+        location: data.isVirtual ? null : data.location,
+        isVirtual: data.isVirtual,
+        maxAttendees: Number(data.maxAttendees),
+        registrationDeadline: new Date(data.registrationDeadline).toISOString(),
+        status: data.status,
+        sessions: fields.map((_, index) => {
+          const sessionStartTime = savedSessionData[index]?.startTime;
+          const sessionEndTime = savedSessionData[index]?.endTime;
+
+          return {
+            id: editingEvent.sessions[index]?.id, // Preserve session IDs
+            title: data.sessions[index].title,
+            description: data.sessions[index].description,
+            startTime: sessionStartTime ? new Date(sessionStartTime).toISOString() : null,
+            endTime: sessionEndTime ? new Date(sessionEndTime).toISOString() : null,
+            location: data.isVirtual ? null : data.location,
+            maxAttendees: Number(data.sessions[index].maxAttendees),
+          };
+        }),
+      };
+
+      const response = await fetch(`/api/events/${editingEvent.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formattedData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update event");
+      }
+
+      const updatedEvent = await response.json();
+      setEvents((prev) =>
+        prev.map((event) => (event.id === updatedEvent.id ? updatedEvent : event)),
+      );
+      setIsEditEventOpen(false);
+      setEditingEvent(null);
+      setSelectedEvent(updatedEvent);
+      toast.success("Event updated successfully");
+
+      // Reset form and states
+      reset();
+      setSavedSessions({});
+      setSavedSessionData({});
+    } catch (error) {
+      console.error("Failed to update event:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update event");
+    }
   };
 
   // // Add state for session validations
@@ -445,7 +598,7 @@ export default function EventsPage() {
     const selectedDate = new Date(e.target.value);
     const sessions = watch("sessions");
 
-    // Check for conflicts with existing sessions immediately
+    // Check for conflicts with existing sessions
     for (let i = 0; i < sessions.length; i++) {
       if (i === index) {
         continue;
@@ -459,7 +612,6 @@ export default function EventsPage() {
       const otherStart = new Date(otherSession.startTime);
       const otherEnd = new Date(otherSession.endTime);
 
-      // Check if selected start time falls within any existing session's time range
       if (selectedDate >= otherStart && selectedDate < otherEnd) {
         setSessionTimeErrors((prev) => ({
           ...prev,
@@ -476,67 +628,57 @@ export default function EventsPage() {
     }
 
     // If we get here, check end time if it exists
-    const endTime = watch(`sessions.${index}.endTime`);
-    if (endTime) {
-      const endTimeDate = new Date(endTime);
-      if (selectedDate >= endTimeDate) {
-        setSessionTimeErrors((prev) => ({
-          ...prev,
-          [index]: {
-            type: "timeRange",
-            message: "Start time must be before end time",
-          },
-        }));
-        return;
-      }
-
-      // Check for conflicts with the full time range
-      const conflictMessage = checkSessionConflicts(sessions, index, selectedDate, endTimeDate);
-      if (conflictMessage) {
-        setSessionTimeErrors((prev) => ({
-          ...prev,
-          [index]: {
-            type: "conflict",
-            message: conflictMessage,
-          },
-        }));
-        return;
-      }
+    const endTime = savedSessionData[index]?.endTime;
+    if (endTime && selectedDate >= endTime) {
+      setSessionTimeErrors((prev) => ({
+        ...prev,
+        [index]: {
+          type: "timeRange",
+          message: "Start time must be before end time",
+        },
+      }));
+      return;
     }
 
-    // Clear any existing errors and set the new value
+    // Clear any existing errors and update the saved session data
     setSessionTimeErrors((prev) => {
       const newErrors = { ...prev };
       delete newErrors[index];
       return newErrors;
     });
 
-    setValue(`sessions.${index}.startTime`, selectedDate, {
-      shouldValidate: true,
-    });
+    setSavedSessionData((prev) => ({
+      ...prev,
+      [index]: {
+        ...prev[index],
+        startTime: selectedDate,
+      },
+    }));
+
+    // Also update the form value
+    setValue(`sessions.${index}.startTime`, selectedDate);
   };
 
-  // Add this function to handle end time changes
+  // Update the handleEndTimeChange function
   const handleEndTimeChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
     const selectedDate = new Date(e.target.value);
-    const startTime = watch(`sessions.${index}.startTime`);
+    const startTime = savedSessionData[index]?.startTime;
     const sessions = watch("sessions");
 
-    if (startTime) {
-      const startTimeDate = new Date(startTime);
-      if (selectedDate <= startTimeDate) {
-        setSessionTimeErrors((prev) => ({
-          ...prev,
-          [index]: {
-            type: "timeRange",
-            message: "End time must be after start time",
-          },
-        }));
-        return;
-      }
+    if (startTime && selectedDate <= startTime) {
+      setSessionTimeErrors((prev) => ({
+        ...prev,
+        [index]: {
+          type: "timeRange",
+          message: "End time must be after start time",
+        },
+      }));
+      return;
+    }
 
-      // Check for conflicts
-      const conflictMessage = checkSessionConflicts(sessions, index, startTimeDate, selectedDate);
+    // Check for conflicts
+    if (startTime) {
+      const conflictMessage = checkSessionConflicts(sessions, index, startTime, selectedDate);
       if (conflictMessage) {
         setSessionTimeErrors((prev) => ({
           ...prev,
@@ -555,9 +697,16 @@ export default function EventsPage() {
       return newErrors;
     });
 
-    setValue(`sessions.${index}.endTime`, selectedDate, {
-      shouldValidate: true,
-    });
+    setSavedSessionData((prev) => ({
+      ...prev,
+      [index]: {
+        ...prev[index],
+        endTime: selectedDate,
+      },
+    }));
+
+    // Also update the form value
+    setValue(`sessions.${index}.endTime`, selectedDate);
   };
 
   // Add this state to track saved sessions
@@ -571,7 +720,33 @@ export default function EventsPage() {
     };
   }>({});
 
-  // Update the handleSaveSession function
+  // Add this state to track which sessions are being edited
+  const [editingSessions, setEditingSessions] = useState<{ [key: number]: boolean }>({});
+
+  // Update the handleEditSession function to handle nullable dates correctly
+  const handleEditSession = (index: number) => {
+    const savedSession = savedSessionData[index];
+    if (savedSession) {
+      // Set the form values with the saved times, with proper type assertions
+      if (savedSession.startTime) {
+        setValue(`sessions.${index}.startTime`, savedSession.startTime as unknown as Date);
+      }
+      if (savedSession.endTime) {
+        setValue(`sessions.${index}.endTime`, savedSession.endTime as unknown as Date);
+      }
+    }
+
+    setEditingSessions((prev) => ({
+      ...prev,
+      [index]: true,
+    }));
+    setSavedSessions((prev) => ({
+      ...prev,
+      [index]: false,
+    }));
+  };
+
+  // Update the handleSaveSession function to handle dates properly
   const handleSaveSession = (index: number) => {
     const sessionData = watch(`sessions.${index}`);
 
@@ -588,12 +763,12 @@ export default function EventsPage() {
         return;
       }
 
-      // Store the saved session data
+      // Store the saved session data with proper type handling
       setSavedSessionData((prev) => ({
         ...prev,
         [index]: {
-          startTime: new Date(sessionData.startTime),
-          endTime: new Date(sessionData.endTime),
+          startTime: sessionData.startTime ? new Date(sessionData.startTime) : null,
+          endTime: sessionData.endTime ? new Date(sessionData.endTime) : null,
         },
       }));
 
@@ -602,13 +777,18 @@ export default function EventsPage() {
         [index]: true,
       }));
 
+      setEditingSessions((prev) => ({
+        ...prev,
+        [index]: false,
+      }));
+
       toast.success(`Session ${index + 1} saved`);
     } else {
       toast.error("Please fill all required fields");
     }
   };
 
-  // Update the formatDateForInput function to handle dates correctly
+  // Update the formatDateForInput function to handle the datetime-local format correctly
   const formatDateForInput = (date: Date | string | null): string => {
     if (!date) {
       return "";
@@ -620,56 +800,13 @@ export default function EventsPage() {
         return "";
       }
 
-      // Format with local timezone offset
-      const year = dateObj.getFullYear();
-      const month = String(dateObj.getMonth() + 1).padStart(2, "0");
-      const day = String(dateObj.getDate()).padStart(2, "0");
-      const hours = String(dateObj.getHours()).padStart(2, "0");
-      const minutes = String(dateObj.getMinutes()).padStart(2, "0");
-
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
+      // Adjust for local timezone and format as YYYY-MM-DDTHH:mm
+      const localDate = new Date(dateObj.getTime() - dateObj.getTimezoneOffset() * 60000);
+      return localDate.toISOString().slice(0, 16);
     } catch {
       return "";
     }
   };
-
-  // Update the convertUTCToLocal function
-  const convertUTCToLocal = (utcDate: string | Date | null): string => {
-    if (!utcDate) {
-      return "";
-    }
-
-    const date = new Date(utcDate);
-    if (Number.isNaN(date.getTime())) {
-      return "";
-    }
-
-    // Create a local ISO string and extract the date and time parts
-    const localString = date
-      .toLocaleString("en-CA", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      })
-      .replace(", ", "T");
-
-    return localString;
-  };
-
-  // // Add the clearFieldError function alongside the other error handling functions
-  // const clearFieldError = (sessionIndex: number, field: string) => {
-  //   setSessionFieldErrors((prev) => {
-  //     const sessionErrors = { ...prev };
-  //     if (sessionErrors[sessionIndex]) {
-  //       const { [field]: _, ...rest } = sessionErrors[sessionIndex];
-  //       sessionErrors[sessionIndex] = rest;
-  //     }
-  //     return sessionErrors;
-  //   });
-  // };
 
   // Add this useEffect to handle session time validation
   useEffect(() => {
@@ -935,7 +1072,7 @@ export default function EventsPage() {
                                   id={`sessions.${index}.title`}
                                   {...register(`sessions.${index}.title`)}
                                   className="border-blue-200 focus:border-blue-400"
-                                  disabled={savedSessions[index]}
+                                  disabled={savedSessions[index] && !editingSessions[index]}
                                 />
                                 {errors.sessions?.[index]?.title && (
                                   <span className="text-red-500 text-sm">
@@ -954,7 +1091,7 @@ export default function EventsPage() {
                                   id={`sessions.${index}.description`}
                                   {...register(`sessions.${index}.description`)}
                                   className="border-blue-200 focus:border-blue-400"
-                                  disabled={savedSessions[index]}
+                                  disabled={savedSessions[index] && !editingSessions[index]}
                                 />
                                 {errors.sessions?.[index]?.description && (
                                   <span className="text-red-500 text-sm">
@@ -973,18 +1110,23 @@ export default function EventsPage() {
                                 </Label>
                                 <Input
                                   type="datetime-local"
-                                  {...register(`sessions.${index}.startTime`)}
-                                  min={
-                                    watch("startDate") ? `${watch("startDate")}T00:00` : undefined
-                                  }
-                                  max={watch("endDate") ? `${watch("endDate")}T23:59` : undefined}
-                                  value={formatDateForInput(
-                                    savedSessions[index] && savedSessionData[index]?.startTime
-                                      ? savedSessionData[index].startTime
-                                      : watch(`sessions.${index}.startTime`),
-                                  )}
-                                  disabled={savedSessions[index]}
+                                  value={formatDateForInput(savedSessionData[index]?.startTime)}
                                   onChange={(e) => handleStartTimeChange(e, index)}
+                                  min={
+                                    watch("startDate")
+                                      ? `${
+                                          new Date(watch("startDate")).toISOString().split("T")[0]
+                                        }T00:00`
+                                      : undefined
+                                  }
+                                  max={
+                                    watch("endDate")
+                                      ? `${
+                                          new Date(watch("endDate")).toISOString().split("T")[0]
+                                        }T23:59`
+                                      : undefined
+                                  }
+                                  className="border-blue-200 focus:border-blue-400"
                                 />
                               </div>
                               <div>
@@ -996,24 +1138,25 @@ export default function EventsPage() {
                                 </Label>
                                 <Input
                                   type="datetime-local"
-                                  {...register(`sessions.${index}.endTime`)}
+                                  value={formatDateForInput(savedSessionData[index]?.endTime)}
+                                  onChange={(e) => handleEndTimeChange(e, index)}
                                   min={
                                     watch(`sessions.${index}.startTime`)
                                       ? formatDateForInput(watch(`sessions.${index}.startTime`))
                                       : watch("startDate")
-                                        ? `${watch("startDate")}T00:00`
+                                        ? `${
+                                            new Date(watch("startDate")).toISOString().split("T")[0]
+                                          }T00:00`
                                         : undefined
                                   }
-                                  max={watch("endDate") ? `${watch("endDate")}T23:59` : undefined}
-                                  value={formatDateForInput(
-                                    savedSessions[index] && savedSessionData[index]?.endTime
-                                      ? savedSessionData[index].endTime
-                                      : watch(`sessions.${index}.endTime`),
-                                  )}
-                                  disabled={
-                                    !watch(`sessions.${index}.startTime`) || savedSessions[index]
+                                  max={
+                                    watch("endDate")
+                                      ? `${
+                                          new Date(watch("endDate")).toISOString().split("T")[0]
+                                        }T23:59`
+                                      : undefined
                                   }
-                                  onChange={(e) => handleEndTimeChange(e, index)}
+                                  className="border-blue-200 focus:border-blue-400"
                                 />
                               </div>
                             </div>
@@ -1029,7 +1172,10 @@ export default function EventsPage() {
                                   id={`sessions.${index}.location`}
                                   {...register(`sessions.${index}.location`)}
                                   className="border-blue-200 focus:border-blue-400"
-                                  disabled={watch("isVirtual") || savedSessions[index]}
+                                  disabled={
+                                    (watch("isVirtual") || savedSessions[index]) &&
+                                    !editingSessions[index]
+                                  }
                                   placeholder={
                                     watch("isVirtual")
                                       ? "Virtual Session"
@@ -1056,7 +1202,7 @@ export default function EventsPage() {
                                   })}
                                   type="number"
                                   className="border-blue-200 focus:border-blue-400"
-                                  disabled={savedSessions[index]}
+                                  disabled={savedSessions[index] && !editingSessions[index]}
                                 />
                                 {errors.sessions?.[index]?.maxAttendees && (
                                   <span className="text-red-500 text-sm">
@@ -1066,23 +1212,36 @@ export default function EventsPage() {
                               </div>
                             </div>
                             <div className="flex justify-between mt-4">
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => remove(index)}
-                                disabled={fields.length === 1}
-                                className="bg-red-500 hover:bg-red-600 text-white"
-                              >
-                                <TrashIcon className="w-4 h-4 mr-2" /> Remove Session
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => remove(index)}
+                                  disabled={fields.length === 1}
+                                  className="bg-red-500 hover:bg-red-600 text-white"
+                                >
+                                  <TrashIcon className="w-4 h-4 mr-2" /> Remove Session
+                                </Button>
+                                {!editingSessions[index] && savedSessions[index] && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditSession(index)}
+                                    className="border-blue-500 text-blue-500 hover:bg-blue-50"
+                                  >
+                                    <Pencil className="w-4 h-4 mr-2" /> Edit Session
+                                  </Button>
+                                )}
+                              </div>
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleSaveSession(index)}
                                 disabled={
-                                  savedSessions[index] ||
+                                  (!editingSessions[index] && savedSessions[index]) ||
                                   !watch(`sessions.${index}.title`) ||
                                   !watch(`sessions.${index}.description`) ||
                                   !watch(`sessions.${index}.startTime`) ||
@@ -1094,10 +1253,13 @@ export default function EventsPage() {
                                 className={cn(
                                   "border-blue-500 text-blue-500 hover:bg-blue-50",
                                   savedSessions[index] &&
+                                    !editingSessions[index] &&
                                     "bg-green-50 border-green-500 text-green-500",
                                 )}
                               >
-                                {savedSessions[index] ? "Session Saved" : "Save Session"}
+                                {savedSessions[index] && !editingSessions[index]
+                                  ? "Session Saved"
+                                  : "Save Session"}
                               </Button>
                             </div>
                           </AccordionContent>
@@ -1279,292 +1441,387 @@ export default function EventsPage() {
       {/* Updated Dialog for editing events */}
       <Dialog open={isEditEventOpen} onOpenChange={setIsEditEventOpen}>
         <DialogContent className="sm:max-w-[700px] bg-white max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
+          <DialogHeader className="bg-white pb-4 border-b">
             <DialogTitle className="text-2xl font-bold text-blue-700">Edit Event</DialogTitle>
           </DialogHeader>
-          {editingEvent && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleUpdateEvent(editingEvent);
-              }}
-              className="space-y-6"
-            >
+          <form onSubmit={handleSubmit(handleEditSubmit)} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="edit-title" className="text-blue-600">
+                  <Label htmlFor="title" className="text-blue-600">
                     Event Title
                   </Label>
                   <Input
-                    id="edit-title"
-                    value={editingEvent.title}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
+                    id="title"
+                    {...register("title")}
                     className="border-blue-200 focus:border-blue-400"
                   />
+                  {errors.title && (
+                    <span className="text-red-500 text-sm">{errors.title.message}</span>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="edit-description" className="text-blue-600">
+                  <Label htmlFor="description" className="text-blue-600">
                     Description
                   </Label>
                   <Input
-                    id="edit-description"
-                    value={editingEvent.description ?? ""}
-                    onChange={(e) =>
-                      setEditingEvent({ ...editingEvent, description: e.target.value })
-                    }
+                    id="description"
+                    {...register("description")}
                     className="border-blue-200 focus:border-blue-400"
                   />
+                  {errors.description && (
+                    <span className="text-red-500 text-sm">{errors.description.message}</span>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="edit-start-date" className="text-blue-600">
+                  <Label htmlFor="startDate" className="text-blue-600">
                     Start Date
                   </Label>
                   <Input
-                    id="edit-start-date"
+                    id="startDate"
                     type="date"
-                    value={moment(editingEvent.startDate).format("YYYY-MM-DD")}
-                    onChange={(e) =>
-                      setEditingEvent({ ...editingEvent, startDate: new Date(e.target.value) })
-                    }
-                    className="border-blue-200 focus:border-blue-400"
+                    {...register("startDate")}
+                    min={new Date().toISOString().split("T")[0]}
+                    defaultValue={watch("startDate")?.toString()}
+                    className={cn(
+                      "border-blue-200 focus:border-blue-400",
+                      errors.startDate && "border-red-500",
+                    )}
                   />
+                  {errors.startDate && (
+                    <span className="text-red-500 text-sm">{errors.startDate.message}</span>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="edit-end-date" className="text-blue-600">
+                  <Label htmlFor="endDate" className="text-blue-600">
                     End Date
                   </Label>
                   <Input
-                    id="edit-end-date"
+                    id="endDate"
                     type="date"
-                    value={moment(editingEvent.endDate).format("YYYY-MM-DD")}
-                    onChange={(e) =>
-                      setEditingEvent({ ...editingEvent, endDate: new Date(e.target.value) })
-                    }
-                    className="border-blue-200 focus:border-blue-400"
+                    {...register("endDate")}
+                    min={watch("startDate")?.toString() || new Date().toISOString().split("T")[0]}
+                    defaultValue={watch("endDate")?.toString()}
+                    className={cn(
+                      "border-blue-200 focus:border-blue-400",
+                      errors.endDate && "border-red-500",
+                    )}
                   />
+                  {errors.endDate && (
+                    <span className="text-red-500 text-sm">{errors.endDate.message}</span>
+                  )}
                 </div>
+              </div>
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="edit-location" className="text-blue-600">
+                  <Label htmlFor="location" className="text-blue-600">
                     Location
                   </Label>
                   <Input
-                    id="edit-location"
-                    value={editingEvent.location ?? ""}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, location: e.target.value })}
+                    id="location"
+                    {...register("location")}
                     className="border-blue-200 focus:border-blue-400"
+                    disabled={watch("isVirtual")}
+                    placeholder={watch("isVirtual") ? "Virtual Event" : "Enter location"}
                   />
+                  {errors.location && (
+                    <span className="text-red-500 text-sm">{errors.location.message}</span>
+                  )}
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    id="edit-is-virtual"
-                    checked={editingEvent.isVirtual}
-                    onCheckedChange={(checked) =>
-                      setEditingEvent({ ...editingEvent, isVirtual: checked as boolean })
-                    }
+                    id="isVirtual"
+                    checked={watch("isVirtual")}
+                    onCheckedChange={(checked) => {
+                      setValue("isVirtual", checked as boolean);
+                      if (checked) {
+                        setValue("location", "");
+                        fields.forEach((_, index) => {
+                          setValue(`sessions.${index}.location`, "");
+                        });
+                      }
+                    }}
                     className="border-blue-400 text-blue-600"
                   />
-                  <Label htmlFor="edit-is-virtual" className="text-blue-600">
+                  <Label htmlFor="isVirtual" className="text-blue-600">
                     Virtual Event
                   </Label>
                 </div>
                 <div>
-                  <Label htmlFor="edit-max-attendees" className="text-blue-600">
+                  <Label htmlFor="maxAttendees" className="text-blue-600">
                     Max Attendees
                   </Label>
                   <Input
-                    id="edit-max-attendees"
+                    id="maxAttendees"
                     type="number"
-                    value={editingEvent.maxAttendees ?? 0}
-                    onChange={(e) =>
-                      setEditingEvent({ ...editingEvent, maxAttendees: Number(e.target.value) })
-                    }
+                    {...register("maxAttendees", { valueAsNumber: true })}
                     className="border-blue-200 focus:border-blue-400"
                   />
+                  {errors.maxAttendees && (
+                    <span className="text-red-500 text-sm">{errors.maxAttendees.message}</span>
+                  )}
                 </div>
                 <div>
-                  <Label htmlFor="edit-registration-deadline" className="text-blue-600">
+                  <Label htmlFor="registrationDeadline" className="text-blue-600">
                     Registration Deadline
                   </Label>
                   <Input
-                    id="edit-registration-deadline"
+                    id="registrationDeadline"
                     type="date"
-                    value={moment(editingEvent.registrationDeadline).format("YYYY-MM-DD")}
-                    onChange={(e) =>
-                      setEditingEvent({
-                        ...editingEvent,
-                        registrationDeadline: new Date(e.target.value),
-                      })
-                    }
-                    className="border-blue-200 focus:border-blue-400"
+                    {...register("registrationDeadline")}
+                    max={watch("startDate")?.toString()}
+                    defaultValue={watch("registrationDeadline")?.toString()}
+                    className={cn(
+                      "border-blue-200 focus:border-blue-400",
+                      errors.registrationDeadline && "border-red-500",
+                    )}
                   />
+                  {errors.registrationDeadline && (
+                    <span className="text-red-500 text-sm">
+                      {errors.registrationDeadline.message}
+                    </span>
+                  )}
                 </div>
               </div>
+            </div>
 
-              <div className="border-t border-blue-200 pt-4 mt-4">
-                <h3 className="text-lg font-semibold mb-2 text-blue-700">Event Sessions</h3>
-                <Accordion type="single" collapsible className="w-full">
-                  {editingEvent.sessions.map((session, index) => (
-                    <AccordionItem value={`session-${index}`} key={session.id}>
-                      <AccordionTrigger className="text-blue-600 hover:text-blue-800">
-                        Session {index + 1}: {session.title}
-                      </AccordionTrigger>
-                      <AccordionContent className="space-y-4">
+            <div className="border-t border-blue-200 pt-4 mt-4">
+              <h3 className="text-lg font-semibold mb-2 text-blue-700">Event Sessions</h3>
+              <Accordion type="single" collapsible className="w-full">
+                {fields.map((field, index) => (
+                  <AccordionItem
+                    value={`session-${index}`}
+                    key={field.id}
+                    className="border-blue-200"
+                  >
+                    <AccordionTrigger className="text-blue-600 hover:text-blue-800">
+                      Session {index + 1}
+                    </AccordionTrigger>
+                    <AccordionContent className="bg-blue-50 p-4 rounded-lg">
+                      {sessionTimeErrors[index] && (
+                        <Alert variant="destructive" className="mb-4">
+                          <AlertCircle className="h-4 w-4 mr-2" />
+                          <AlertTitle>
+                            {sessionTimeErrors[index]?.type === "conflict"
+                              ? "Session Conflict"
+                              : "Time Range Error"}
+                          </AlertTitle>
+                          <AlertDescription>{sessionTimeErrors[index]?.message}</AlertDescription>
+                        </Alert>
+                      )}
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor={`edit-session-title-${index}`} className="text-blue-600">
+                          <Label htmlFor={`sessions.${index}.title`} className="text-blue-600">
                             Session Title
                           </Label>
                           <Input
-                            id={`edit-session-title-${index}`}
-                            value={session.title}
-                            onChange={(e) => {
-                              const updatedSessions = [...editingEvent.sessions];
-                              updatedSessions[index] = { ...session, title: e.target.value };
-                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
-                            }}
+                            id={`sessions.${index}.title`}
+                            {...register(`sessions.${index}.title`)}
                             className="border-blue-200 focus:border-blue-400"
+                            disabled={savedSessions[index] && !editingSessions[index]}
                           />
+                          {errors.sessions?.[index]?.title && (
+                            <span className="text-red-500 text-sm">
+                              {errors.sessions[index]?.title?.message}
+                            </span>
+                          )}
                         </div>
                         <div>
                           <Label
-                            htmlFor={`edit-session-description-${index}`}
+                            htmlFor={`sessions.${index}.description`}
                             className="text-blue-600"
                           >
-                            Description
+                            Session Description
                           </Label>
                           <Input
-                            id={`edit-session-description-${index}`}
-                            value={session.description ?? ""}
-                            onChange={(e) => {
-                              const updatedSessions = [...editingEvent.sessions];
-                              updatedSessions[index] = { ...session, description: e.target.value };
-                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
-                            }}
+                            id={`sessions.${index}.description`}
+                            {...register(`sessions.${index}.description`)}
                             className="border-blue-200 focus:border-blue-400"
+                            disabled={savedSessions[index] && !editingSessions[index]}
                           />
+                          {errors.sessions?.[index]?.description && (
+                            <span className="text-red-500 text-sm">
+                              {errors.sessions[index]?.description?.message}
+                            </span>
+                          )}
                         </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mt-2">
                         <div>
-                          <Label
-                            htmlFor={`edit-session-start-time-${index}`}
-                            className="text-blue-600"
-                          >
+                          <Label htmlFor={`sessions.${index}.startTime`} className="text-blue-600">
                             Start Time
                           </Label>
                           <Input
-                            id={`edit-session-start-time-${index}`}
                             type="datetime-local"
-                            value={convertUTCToLocal(session.startTime)}
-                            min={convertUTCToLocal(editingEvent?.startDate)}
-                            max={convertUTCToLocal(editingEvent?.endDate)}
-                            onChange={(e) => {
-                              const selectedDate = new Date(e.target.value);
-                              // Preserve the local time without UTC conversion
-                              const localDate = new Date(
-                                selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000,
-                              );
-
-                              if (session.endTime && localDate >= new Date(session.endTime)) {
-                                toast.error("Start time must be before end time");
-                                return;
-                              }
-
-                              const updatedSessions = [...editingEvent.sessions];
-                              updatedSessions[index] = {
-                                ...session,
-                                startTime: localDate,
-                              };
-                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
-                            }}
+                            value={formatDateForInput(savedSessionData[index]?.startTime)}
+                            onChange={(e) => handleStartTimeChange(e, index)}
+                            min={
+                              watch("startDate")
+                                ? `${
+                                    new Date(watch("startDate")).toISOString().split("T")[0]
+                                  }T00:00`
+                                : undefined
+                            }
+                            max={
+                              watch("endDate")
+                                ? `${new Date(watch("endDate")).toISOString().split("T")[0]}T23:59`
+                                : undefined
+                            }
                             className="border-blue-200 focus:border-blue-400"
                           />
                         </div>
                         <div>
-                          <Label
-                            htmlFor={`edit-session-end-time-${index}`}
-                            className="text-blue-600"
-                          >
+                          <Label htmlFor={`sessions.${index}.endTime`} className="text-blue-600">
                             End Time
                           </Label>
                           <Input
-                            id={`edit-session-end-time-${index}`}
                             type="datetime-local"
-                            value={convertUTCToLocal(session.endTime)}
+                            value={formatDateForInput(savedSessionData[index]?.endTime)}
+                            onChange={(e) => handleEndTimeChange(e, index)}
                             min={
-                              convertUTCToLocal(session.startTime) ||
-                              convertUTCToLocal(editingEvent?.startDate)
+                              watch(`sessions.${index}.startTime`)
+                                ? formatDateForInput(watch(`sessions.${index}.startTime`))
+                                : watch("startDate")
+                                  ? `${
+                                      new Date(watch("startDate")).toISOString().split("T")[0]
+                                    }T00:00`
+                                  : undefined
                             }
-                            max={convertUTCToLocal(editingEvent?.endDate)}
-                            onChange={(e) => {
-                              const selectedDate = new Date(e.target.value);
-                              // Preserve the local time without UTC conversion
-                              const localDate = new Date(
-                                selectedDate.getTime() - selectedDate.getTimezoneOffset() * 60000,
-                              );
-
-                              if (session.startTime && localDate <= new Date(session.startTime)) {
-                                toast.error("End time must be after start time");
-                                return;
-                              }
-
-                              const updatedSessions = [...editingEvent.sessions];
-                              updatedSessions[index] = {
-                                ...session,
-                                endTime: localDate,
-                              };
-                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
-                            }}
+                            max={
+                              watch("endDate")
+                                ? `${new Date(watch("endDate")).toISOString().split("T")[0]}T23:59`
+                                : undefined
+                            }
                             className="border-blue-200 focus:border-blue-400"
                           />
                         </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mt-2">
                         <div>
-                          <Label
-                            htmlFor={`edit-session-location-${index}`}
-                            className="text-blue-600"
-                          >
-                            Location
+                          <Label htmlFor={`sessions.${index}.location`} className="text-blue-600">
+                            Session Location
                           </Label>
                           <Input
-                            id={`edit-session-location-${index}`}
-                            value={session.location ?? ""}
-                            onChange={(e) => {
-                              const updatedSessions = [...editingEvent.sessions];
-                              updatedSessions[index] = { ...session, location: e.target.value };
-                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
-                            }}
+                            id={`sessions.${index}.location`}
+                            {...register(`sessions.${index}.location`)}
                             className="border-blue-200 focus:border-blue-400"
+                            disabled={
+                              (watch("isVirtual") || savedSessions[index]) &&
+                              !editingSessions[index]
+                            }
+                            placeholder={
+                              watch("isVirtual") ? "Virtual Session" : "Enter session location"
+                            }
                           />
+                          {errors.sessions?.[index]?.location && (
+                            <span className="text-red-500 text-sm">
+                              {errors.sessions[index]?.location?.message}
+                            </span>
+                          )}
                         </div>
                         <div>
                           <Label
-                            htmlFor={`edit-session-max-attendees-${index}`}
+                            htmlFor={`sessions.${index}.maxAttendees`}
                             className="text-blue-600"
                           >
                             Max Attendees
                           </Label>
                           <Input
-                            id={`edit-session-max-attendees-${index}`}
+                            id={`sessions.${index}.maxAttendees`}
+                            {...register(`sessions.${index}.maxAttendees`, { valueAsNumber: true })}
                             type="number"
-                            value={session.maxAttendees ?? 0}
-                            onChange={(e) => {
-                              const updatedSessions = [...editingEvent.sessions];
-                              updatedSessions[index] = {
-                                ...session,
-                                maxAttendees: Number(e.target.value),
-                              };
-                              setEditingEvent({ ...editingEvent, sessions: updatedSessions });
-                            }}
                             className="border-blue-200 focus:border-blue-400"
+                            disabled={savedSessions[index] && !editingSessions[index]}
                           />
+                          {errors.sessions?.[index]?.maxAttendees && (
+                            <span className="text-red-500 text-sm">
+                              {errors.sessions[index]?.maxAttendees?.message}
+                            </span>
+                          )}
                         </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </div>
-              <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                Update Event
+                      </div>
+                      <div className="flex justify-between mt-4">
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => remove(index)}
+                            disabled={fields.length === 1}
+                            className="bg-red-500 hover:bg-red-600 text-white"
+                          >
+                            <TrashIcon className="w-4 h-4 mr-2" /> Remove Session
+                          </Button>
+                          {!editingSessions[index] && savedSessions[index] && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditSession(index)}
+                              className="border-blue-500 text-blue-500 hover:bg-blue-50"
+                            >
+                              <Pencil className="w-4 h-4 mr-2" /> Edit Session
+                            </Button>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSaveSession(index)}
+                          disabled={
+                            (!editingSessions[index] && savedSessions[index]) ||
+                            !watch(`sessions.${index}.title`) ||
+                            !watch(`sessions.${index}.description`) ||
+                            !watch(`sessions.${index}.startTime`) ||
+                            !watch(`sessions.${index}.endTime`) ||
+                            !watch(`sessions.${index}.maxAttendees`) ||
+                            Number(watch(`sessions.${index}.maxAttendees`)) <= 0 ||
+                            !!sessionTimeErrors[index]
+                          }
+                          className={cn(
+                            "border-blue-500 text-blue-500 hover:bg-blue-50",
+                            savedSessions[index] &&
+                              !editingSessions[index] &&
+                              "bg-green-50 border-green-500 text-green-500",
+                          )}
+                        >
+                          {savedSessions[index] && !editingSessions[index]
+                            ? "Session Saved"
+                            : "Save Session"}
+                        </Button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+              <Button
+                type="button"
+                onClick={addSession}
+                className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <PlusIcon className="w-4 h-4 mr-2" /> Add Another Session
               </Button>
-            </form>
-          )}
+            </div>
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={
+                !watch("title") ||
+                !watch("description") ||
+                !watch("startDate") ||
+                !watch("endDate") ||
+                !watch("registrationDeadline") ||
+                (!watch("isVirtual") && !watch("location")) ||
+                !watch("maxAttendees") ||
+                Number(watch("maxAttendees")) <= 0 ||
+                !fields.every((_, index) => savedSessions[index]) ||
+                Object.values(sessionTimeErrors).some((error) => error !== null)
+              }
+            >
+              Update Event
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
