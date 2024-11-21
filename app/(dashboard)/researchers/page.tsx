@@ -8,64 +8,83 @@ import Image from "next/image";
 
 interface Researcher {
   id: string;
-  name: string;
-  specialization: string;
-  photo: string;
+  firstName: string;
+  lastName: string;
+  expertise: string;
+  researchInterests: string;
+  imageURL: string;
+  isFollowing: boolean;
+  isFollowingYou: boolean;
 }
 
 export default function ResearchersPage() {
   const [researchers, setResearchers] = useState<Researcher[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulating researchers data with high-quality images
-    const sampleResearchers: Researcher[] = [
-      {
-        id: "1",
-        name: "Dr. Emily Chen",
-        specialization: "Quantum Computing",
-        photo:
-          "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80",
-      },
-      {
-        id: "2",
-        name: "Prof. Michael Johnson",
-        specialization: "Machine Learning",
-        photo:
-          "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80",
-      },
-      {
-        id: "3",
-        name: "Dr. Sarah Patel",
-        specialization: "Bioinformatics",
-        photo:
-          "https://images.unsplash.com/photo-1573496799652-408c2ac9fe98?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80",
-      },
-      {
-        id: "4",
-        name: "Dr. David Kim",
-        specialization: "Nanotechnology",
-        photo:
-          "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80",
-      },
-      {
-        id: "5",
-        name: "Prof. Olivia Garcia",
-        specialization: "Artificial Intelligence",
-        photo:
-          "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80",
-      },
-      {
-        id: "6",
-        name: "Dr. James Wilson",
-        specialization: "Robotics",
-        photo:
-          "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80",
-      },
-    ];
-
-    localStorage.setItem("researchers", JSON.stringify(sampleResearchers));
-    setResearchers(sampleResearchers);
+    fetchResearchers();
   }, []);
+
+  const fetchResearchers = async () => {
+    try {
+      const response = await fetch("/api/researchers");
+      if (!response.ok) {
+        throw new Error("Failed to fetch researchers");
+      }
+      const data = await response.json();
+      setResearchers(data);
+    } catch (error) {
+      console.error("Error fetching researchers:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFollow = async (researcherId: string) => {
+    try {
+      const response = await fetch("/api/researchers/follow", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ researcherId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to follow/unfollow");
+      }
+
+      setResearchers((prev) =>
+        prev.map((researcher) =>
+          researcher.id === researcherId
+            ? { ...researcher, isFollowing: !researcher.isFollowing }
+            : researcher,
+        ),
+      );
+    } catch (error) {
+      console.error("Error following/unfollowing:", error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <p className="text-center">Loading researchers...</p>
+      </div>
+    );
+  }
+
+  if (researchers.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8 text-center">Connect with Researchers</h1>
+        <div className="text-center p-8 bg-gray-50 rounded-lg">
+          <p className="text-gray-600">No researchers found at the moment.</p>
+          <p className="text-gray-500 mt-2">Please check back later!</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -75,8 +94,8 @@ export default function ResearchersPage() {
           <Card key={researcher.id} className="overflow-hidden transition-shadow hover:shadow-lg">
             <div className="relative h-64 overflow-hidden">
               <Image
-                src={researcher.photo}
-                alt={researcher.name}
+                src={researcher.imageURL}
+                alt={`${researcher.firstName} ${researcher.lastName}`}
                 layout="fill"
                 objectFit="cover"
                 objectPosition="center top"
@@ -84,13 +103,42 @@ export default function ResearchersPage() {
               />
             </div>
             <CardHeader>
-              <CardTitle className="text-xl font-semibold">{researcher.name}</CardTitle>
+              <CardTitle className="text-xl font-semibold">
+                {researcher.firstName} {researcher.lastName}
+                {researcher.isFollowingYou && (
+                  <span className="text-sm font-normal text-blue-600 ml-2">Follows you</span>
+                )}
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="mb-4 text-gray-600">{researcher.specialization}</p>
-              <Link href={`/chat?researcherId=${researcher.id}`}>
-                <Button className="w-full">Chat with {researcher.name}</Button>
-              </Link>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-gray-600 font-medium">Expertise</p>
+                <p className="text-sm">{researcher.expertise}</p>
+              </div>
+              <div>
+                <p className="text-gray-600 font-medium">Research Interests</p>
+                <p className="text-sm">{researcher.researchInterests}</p>
+              </div>
+              <div className="flex gap-2">
+                {researcher.isFollowing ? (
+                  <>
+                    <Button
+                      onClick={() => handleFollow(researcher.id)}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Unfollow
+                    </Button>
+                    <Link href={`/chat?researcherId=${researcher.id}`} className="flex-1">
+                      <Button className="w-full">Chat</Button>
+                    </Link>
+                  </>
+                ) : (
+                  <Button onClick={() => handleFollow(researcher.id)} className="w-full">
+                    Follow
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}

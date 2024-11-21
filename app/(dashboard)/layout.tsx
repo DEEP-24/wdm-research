@@ -28,8 +28,8 @@ import {
   ScanEyeIcon,
   SearchIcon,
   SendIcon,
-  User2Icon,
   UserIcon,
+  Users2Icon,
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -48,7 +48,7 @@ const roleBasedSidebarItems = {
     { icon: BadgeDollarSignIcon, label: "Funding Opportunities", href: "/funding-opportunities" },
     { icon: FileTextIcon, label: "Grant Applications", href: "/grant-applications" },
     { icon: HelpCircle, label: "Support", href: "/support" },
-    { icon: User2Icon, label: "Researchers", href: "/researchers" },
+    { icon: Users2Icon, label: "Researchers", href: "/researchers" },
   ],
   admin: [
     { icon: HomeIcon, label: "Home", href: "/" },
@@ -61,6 +61,7 @@ const roleBasedSidebarItems = {
     { icon: BadgeDollarSignIcon, label: "Funding Opportunities", href: "/funding-opportunities" },
     { icon: FileTextIcon, label: "Grant Applications", href: "/grant-applications" },
     { icon: HelpCircle, label: "Support", href: "/support" },
+    { icon: Users2Icon, label: "Researchers", href: "/researchers" },
   ],
   investor: [
     { icon: HomeIcon, label: "Home", href: "/" },
