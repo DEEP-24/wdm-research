@@ -69,8 +69,7 @@ export default function LoginPage() {
         throw new Error(responseData.error || "Login failed");
       }
 
-      router.push("/");
-      router.refresh();
+      router.push(responseData.redirectTo || "/");
     } catch (error) {
       console.error("Login error:", error);
       toast.error(error instanceof Error ? error.message : "An unexpected error occurred");

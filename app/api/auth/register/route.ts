@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
     console.log("User created successfully:", user.id);
 
-    return NextResponse.json({ message: "User created successfully" }, { status: 201 });
+    return NextResponse.json({ success: true, redirectTo: "/login" });
   } catch (error) {
     console.error("Registration error details:", error);
 

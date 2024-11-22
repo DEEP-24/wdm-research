@@ -31,6 +31,7 @@ import { type RegisterFormData, registerSchema } from "@/lib/schema";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [_fieldErrors, setFieldErrors] = useState<{ [key: string]: string[] }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -72,18 +73,15 @@ export default function RegisterPage() {
       const responseData = await response.json();
 
       if (!response.ok) {
-        if (responseData.details) {
-          responseData.details.forEach((error: { path: string; message: string }) => {
-            toast.error(`${error.path}: ${error.message}`);
-          });
-        } else {
-          throw new Error(responseData.error || "Registration failed");
+        if (responseData.fieldErrors) {
+          setFieldErrors(responseData.fieldErrors);
+          return;
         }
-        return;
+        throw new Error(responseData.error || "Registration failed");
       }
 
-      toast.success("Registration successful!");
-      router.push("/login");
+      toast.success("Registration successful! Please login.");
+      router.push(responseData.redirectTo || "/login");
     } catch (error) {
       console.error("Registration error:", error);
       toast.error(error instanceof Error ? error.message : "Registration failed");
