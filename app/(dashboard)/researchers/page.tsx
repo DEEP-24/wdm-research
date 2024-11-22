@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
-import ChatComponent from "../_components/chat";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface Researcher {
   id: string;
@@ -22,9 +22,9 @@ interface Researcher {
 export default function ResearchersPage() {
   const [researchers, setResearchers] = useState<Researcher[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedResearcher, setSelectedResearcher] = useState<Researcher | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string>();
   const [followLoading, setFollowLoading] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     fetchResearchers();
@@ -115,11 +115,7 @@ export default function ResearchersPage() {
   };
 
   const handleOpenChat = (researcher: Researcher) => {
-    setSelectedResearcher(researcher);
-  };
-
-  const handleCloseChat = () => {
-    setSelectedResearcher(null);
+    router.push(`/chat?userId=${researcher.id}`);
   };
 
   if (loading) {
@@ -196,23 +192,6 @@ export default function ResearchersPage() {
           </Card>
         ))}
       </div>
-
-      {selectedResearcher && (
-        <div className="fixed bottom-4 right-4 w-96 h-[600px] bg-background border rounded-lg shadow-lg overflow-hidden">
-          <ChatComponent
-            recipientId={selectedResearcher.id}
-            recipientName={`${selectedResearcher.firstName} ${selectedResearcher.lastName}`}
-            recipientEmail={selectedResearcher.email}
-            recipientProfile={{
-              firstName: selectedResearcher.firstName,
-              lastName: selectedResearcher.lastName,
-            }}
-            currentUserId={currentUserId}
-            isOpen={true}
-            onClose={handleCloseChat}
-          />
-        </div>
-      )}
     </div>
   );
 }

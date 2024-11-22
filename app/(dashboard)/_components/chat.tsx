@@ -30,7 +30,10 @@ interface ChatComponentProps {
   recipientProfile: {
     firstName: string;
     lastName: string;
-  } | null;
+    expertise?: string;
+    researchInterests?: string;
+    imageURL?: string;
+  };
   currentUserId?: string;
   isOpen: boolean;
   onClose: () => void;
@@ -49,29 +52,22 @@ export default function ChatComponent({
   const [newMessage, setNewMessage] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!currentUserId || !isOpen) {
+    if (!currentUserId) {
       return;
     }
 
     const socket = initializeSocket(currentUserId);
 
     socket.on("connect", () => {
-      setIsConnected(true);
       console.log("Socket connected");
+      setIsConnected(true);
     });
 
     socket.on("receive-message", (message: Message) => {
-      if (message.senderId === recipientId || message.receiverId === recipientId) {
-        setMessages((prev) => [...prev, message]);
-        scrollToBottom();
-      }
+      setMessages((prev) => [...prev, message]);
     });
 
     socket.on("disconnect", () => {
@@ -89,29 +85,28 @@ export default function ChatComponent({
     return () => {
       disconnectSocket();
     };
-  }, [currentUserId, recipientId, isOpen]);
+  }, [currentUserId]);
 
   useEffect(() => {
-    scrollToBottom();
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const fetchMessages = async () => {
-    if (!currentUserId) {
-      return;
-    }
-
     try {
-      setIsLoading(true);
       const response = await fetch(`/api/messages?userId=${recipientId}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch messages");
-      }
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch messages");
+      }
+
+      console.log("Fetched messages:", data);
       setMessages(data);
     } catch (error) {
       console.error("Error fetching messages:", error);
-    } finally {
-      setIsLoading(false);
+      throw error;
     }
   };
 
@@ -121,7 +116,10 @@ export default function ChatComponent({
       return;
     }
 
+    const messageContent = newMessage.trim();
+    setNewMessage("");
     setIsLoading(true);
+
     try {
       const response = await fetch("/api/messages", {
         method: "POST",
@@ -129,29 +127,30 @@ export default function ChatComponent({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          content: newMessage,
+          content: messageContent,
           receiverId: recipientId,
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to send message");
+        throw new Error(data.error || "Failed to send message");
       }
 
-      const message = await response.json();
-      setMessages((prev) => [...prev, message]);
-      setNewMessage("");
+      console.log("Message sent successfully:", data);
+      setMessages((prev) => [...prev, data]);
 
       const socket = getSocket();
-      if (socket) {
-        socket.emit("send-message", {
-          content: newMessage,
-          senderId: currentUserId,
-          receiverId: recipientId,
-        });
+      if (socket?.connected) {
+        socket.emit("send-message", data);
+      } else {
+        console.warn("Socket not connected when trying to emit message");
       }
     } catch (error) {
       console.error("Error sending message:", error);
+      setNewMessage(messageContent); // Restore the message if sending failed
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -167,12 +166,17 @@ export default function ChatComponent({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Avatar className="h-10 w-10">
-              <AvatarImage
-                src={`https://api.dicebear.com/6.x/initials/svg?seed=${recipientName}`}
-              />
+              {recipientProfile.imageURL ? (
+                <AvatarImage src={recipientProfile.imageURL} alt={recipientName} />
+              ) : (
+                <AvatarImage
+                  src={`https://api.dicebear.com/6.x/initials/svg?seed=${recipientName}`}
+                  alt={recipientName}
+                />
+              )}
               <AvatarFallback>
-                {recipientProfile?.firstName?.[0]}
-                {recipientProfile?.lastName?.[0]}
+                {recipientProfile.firstName[0]}
+                {recipientProfile.lastName[0]}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
@@ -186,7 +190,7 @@ export default function ChatComponent({
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-4">
           {messages.map((message) => (
             <div
@@ -209,7 +213,6 @@ export default function ChatComponent({
               </div>
             </div>
           ))}
-          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 

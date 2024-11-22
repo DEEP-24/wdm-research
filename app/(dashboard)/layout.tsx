@@ -26,6 +26,7 @@ import {
   LogOutIcon,
   MenuIcon,
   MessageCircleIcon,
+  MessageSquareIcon,
   ScanEyeIcon,
   SearchIcon,
   SendIcon,
@@ -50,6 +51,7 @@ const roleBasedSidebarItems = {
     { icon: FileTextIcon, label: "Grant Applications", href: "/grant-applications" },
     { icon: HelpCircle, label: "Support", href: "/support" },
     { icon: Users2Icon, label: "Researchers", href: "/researchers" },
+    { icon: MessageSquareIcon, label: "Chat", href: "/chat" },
   ],
   admin: [
     { icon: HomeIcon, label: "Home", href: "/" },
@@ -64,6 +66,7 @@ const roleBasedSidebarItems = {
     { icon: HelpCircle, label: "Support", href: "/support" },
     { icon: Users2Icon, label: "Researchers", href: "/researchers" },
     { icon: DollarSignIcon, label: "Investment Opportunities", href: "/investment-opportunities" },
+    { icon: MessageSquareIcon, label: "Chat", href: "/chat" },
   ],
   investor: [
     { icon: HomeIcon, label: "Home", href: "/" },
@@ -74,12 +77,14 @@ const roleBasedSidebarItems = {
     },
     { icon: BriefcaseBusinessIcon, label: "My Investments", href: "/investments" },
     { icon: HelpCircle, label: "Support", href: "/support" },
+    { icon: MessageSquareIcon, label: "Chat", href: "/chat" },
   ],
   organizer: [
     { icon: HomeIcon, label: "Home", href: "/" },
     { icon: CalendarIcon, label: "Events", href: "/events" },
     { icon: CalendarCheck2Icon, label: "Reservations", href: "/reservations" },
     { icon: HelpCircle, label: "Support", href: "/support" },
+    { icon: MessageSquareIcon, label: "Chat", href: "/chat" },
   ],
 };
 

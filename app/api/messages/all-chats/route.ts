@@ -10,21 +10,33 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    // Get all users except the current user
-    const allUsers = await db.user.findMany({
+    // Get all users who have either sent messages to or received messages from the current user
+    const usersWithMessages = await db.user.findMany({
       where: {
-        NOT: {
-          id: currentUser.id,
-        },
+        OR: [
+          {
+            // Users who have sent messages to current user
+            sentMessages: {
+              some: {
+                receiverId: currentUser.id,
+              },
+            },
+          },
+          {
+            // Users who have received messages from current user
+            receivedMessages: {
+              some: {
+                senderId: currentUser.id,
+              },
+            },
+          },
+        ],
       },
       select: {
         id: true,
         email: true,
         firstName: true,
         lastName: true,
-        expertise: true,
-        researchInterests: true,
-        imageURL: true,
         receivedMessages: {
           where: {
             senderId: currentUser.id,
@@ -59,19 +71,11 @@ export async function GET() {
             isRead: true,
           },
         },
-        followedBy: {
-          where: {
-            followerId: currentUser.id,
-          },
-          select: {
-            followerId: true,
-          },
-        },
       },
     });
 
-    // Format the response
-    const formattedUsers = allUsers.map((user) => {
+    // Format the response (same formatting as messages/users route)
+    const formattedUsers = usersWithMessages.map((user) => {
       const lastSentMessage = user.receivedMessages[0];
       const lastReceivedMessage = user.sentMessages[0];
       const lastMessage =
@@ -84,14 +88,10 @@ export async function GET() {
       return {
         id: user.id,
         email: user.email,
-        imageURL: user.imageURL,
         profile: {
           firstName: user.firstName,
           lastName: user.lastName,
-          expertise: user.expertise,
-          researchInterests: user.researchInterests,
         },
-        isFollowing: user.followedBy.length > 0,
         lastMessage: lastMessage
           ? {
               id: lastMessage.id,
@@ -105,28 +105,9 @@ export async function GET() {
       };
     });
 
-    // Sort users: users with messages first, then alphabetically
-    const sortedUsers = formattedUsers.sort((a, b) => {
-      // First sort by whether there's a message
-      if (a.lastMessage && !b.lastMessage) {
-        return -1;
-      }
-      if (!a.lastMessage && b.lastMessage) {
-        return 1;
-      }
-
-      // If both have messages, sort by message time
-      if (a.lastMessage && b.lastMessage) {
-        return new Date(b.lastMessage.sentAt).getTime() - new Date(a.lastMessage.sentAt).getTime();
-      }
-
-      // If neither have messages, sort alphabetically
-      return a.profile.firstName.localeCompare(b.profile.firstName);
-    });
-
-    return NextResponse.json(sortedUsers);
+    return NextResponse.json(formattedUsers);
   } catch (error) {
-    console.error("Error in GET /api/messages/users:", error);
+    console.error("Error in GET /api/messages/all-chats:", error);
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
