@@ -63,9 +63,57 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // If user is admin, fetch all applications, otherwise only user's applications
     const applications = await db.grantApplication.findMany({
-      where: {
-        submittedBy: { email: user.email },
+      where:
+        user.role === "ADMIN"
+          ? undefined
+          : {
+              submittedBy: { email: user.email },
+            },
+      include: {
+        projectProposal: true,
+        submittedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            imageURL: true,
+          },
+        },
+        reviewedBy: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(applications);
+  } catch (error) {
+    console.error("[GRANT_APPLICATIONS_GET]", error);
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+}
+
+// Add a new PATCH endpoint for updating application status
+export async function PATCH(req: Request) {
+  try {
+    const user = await getCurrentUser();
+    if (!user || user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const json = await req.json();
+    const { applicationId, status } = json;
+
+    const application = await db.grantApplication.update({
+      where: { id: applicationId },
+      data: {
+        status,
+        reviewedBy: { connect: { id: user.id } },
       },
       include: {
         projectProposal: true,
@@ -86,9 +134,9 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(applications);
+    return NextResponse.json(application);
   } catch (error) {
-    console.error("[GRANT_APPLICATIONS_GET]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    console.error("[GRANT_APPLICATIONS_PATCH]", error);
+    return NextResponse.json({ error: "Failed to update application" }, { status: 500 });
   }
 }

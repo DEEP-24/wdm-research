@@ -18,6 +18,7 @@ import {
   CalendarCheck2Icon,
   CalendarIcon,
   ChevronDownIcon,
+  DollarSignIcon,
   FileTextIcon,
   FolderKanbanIcon,
   HelpCircle,
@@ -62,6 +63,7 @@ const roleBasedSidebarItems = {
     { icon: FileTextIcon, label: "Grant Applications", href: "/grant-applications" },
     { icon: HelpCircle, label: "Support", href: "/support" },
     { icon: Users2Icon, label: "Researchers", href: "/researchers" },
+    { icon: DollarSignIcon , label: "Investment Opportunities", href: "/investment-opportunities" },
   ],
   investor: [
     { icon: HomeIcon, label: "Home", href: "/" },

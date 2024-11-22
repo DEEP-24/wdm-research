@@ -59,6 +59,10 @@ model User {
   submittedApplications GrantApplication[] @relation("SubmittedApplications")
   reviewedApplications  GrantApplication[] @relation("ReviewedApplications")
 
+  createdOpportunities           FundingOpportunity[]    @relation("CreatedOpportunities")
+  createdInvestmentOpportunities InvestmentOpportunity[] @relation("CreatedOpportunities")
+  investments                    Investment[]            @relation("UserInvestments")
+
   @@map("users")
 }
 
@@ -233,7 +237,7 @@ model GrantApplication {
   requestAmount     Float
   keywords          String
   status            GrantStatus     @default(SUBMITTED)
-  attachments       Json? // Will store array of {name: string, type: string, url: string}
+  attachments       Json?
 
   reviewedBy   User?   @relation("ReviewedApplications", fields: [reviewedById], references: [id])
   reviewedById String?
@@ -245,6 +249,65 @@ model GrantApplication {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("grant_applications")
+}
+
+model FundingOpportunity {
+  id               String   @id @default(uuid()) @map("id")
+  title            String
+  description      String
+  amount           Float
+  deadline         DateTime
+  topics           String
+  contactEmail     String
+  organizationName String
+  phoneNumber      String
+
+  createdBy   User   @relation("CreatedOpportunities", fields: [createdById], references: [id])
+  createdById String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("funding_opportunities")
+}
+
+model InvestmentOpportunity {
+  id            String   @id @default(uuid()) @map("id")
+  title         String
+  description   String
+  targetAmount  Float
+  currentAmount Float    @default(0)
+  deadline      DateTime
+  sector        String
+  companyName   String
+  riskLevel     String
+
+  createdBy   User   @relation("CreatedOpportunities", fields: [createdById], references: [id])
+  createdById String
+
+  investments Investment[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("investment_opportunities")
+}
+
+model Investment {
+  id     String   @id @default(uuid()) @map("id")
+  amount Float
+  date   DateTime @default(now())
+
+  investor   User   @relation("UserInvestments", fields: [investorId], references: [id])
+  investorId String
+
+  opportunity   InvestmentOpportunity @relation(fields: [opportunityId], references: [id])
+  opportunityId String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("investments")
 }
 
 enum UserRole {

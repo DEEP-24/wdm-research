@@ -1,20 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { InfoIcon } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -22,12 +11,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { PaperclipIcon, EyeIcon, DownloadIcon, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@/types/user";
+import { GrantStatus } from "@prisma/client";
+import { EyeIcon, InfoIcon, PaperclipIcon, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface ProjectProposal {
   id: string;
@@ -45,10 +45,16 @@ interface GrantApplication {
   };
   requestAmount: number;
   keywords: string;
-  status: "SUBMITTED" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED";
+  status: GrantStatus;
   reviewedBy?: {
     firstName: string;
     lastName: string;
+  };
+  submittedById: string;
+  submittedBy: {
+    firstName: string;
+    lastName: string;
+    imageURL: string;
   };
   attachments: { name: string; type: string; url: string }[];
 }
@@ -202,6 +208,33 @@ export default function GrantApplications() {
       toast.error(error instanceof Error ? error.message : "Failed to submit application");
     }
   };
+
+  const handleStatusChange = async (applicationId: string, newStatus: string) => {
+    try {
+      const res = await fetch("/api/grant-applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          applicationId,
+          status: newStatus,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update status");
+      }
+
+      await fetchApplications();
+      toast.success("Status updated successfully");
+    } catch (_error) {
+      toast.error("Failed to update status");
+    }
+  };
+
+  const filteredApplications =
+    currentUser?.role === "USER"
+      ? applications.filter((app) => app.submittedById === currentUser.id)
+      : applications;
 
   if (!currentUser) {
     return null;
@@ -482,27 +515,31 @@ export default function GrantApplications() {
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="text-2xl font-semibold text-blue-700">
-              Your Applications
+              {currentUser.role === "ADMIN" ? "All Applications" : "Your Applications"}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[400px] pr-4">
-              {applications.length === 0 ? (
+              {filteredApplications.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">No applications filled yet.</p>
+                  <p className="text-gray-500 mb-4">No applications found.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {applications.map((app, index) => (
+                  {filteredApplications.map((app) => (
                     <Card
-                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                      key={index}
+                      key={app.id}
                       className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300"
                     >
                       <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                         <CardTitle className="text-lg font-bold truncate">
                           {app.projectProposal.title}
                         </CardTitle>
+                        {currentUser.role === "ADMIN" && (
+                          <div className="text-sm text-white/80">
+                            Submitted by: {app.submittedBy.firstName} {app.submittedBy.lastName}
+                          </div>
+                        )}
                       </CardHeader>
                       <CardContent className="flex-grow flex flex-col justify-between p-4 space-y-3">
                         <div className="space-y-2">
@@ -588,6 +625,26 @@ export default function GrantApplications() {
                         >
                           <EyeIcon className="w-4 h-4 mr-2" /> View Details
                         </Button>
+                        {currentUser.role === "ADMIN" && (
+                          <div className="mt-2">
+                            <Label htmlFor={`status-${app.id}`}>Update Status</Label>
+                            <Select
+                              defaultValue={app.status}
+                              onValueChange={(value) => handleStatusChange(app.id, value)}
+                            >
+                              <SelectTrigger id={`status-${app.id}`}>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.values(GrantStatus).map((status) => (
+                                  <SelectItem key={status} value={status}>
+                                    {status.toLowerCase()}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
