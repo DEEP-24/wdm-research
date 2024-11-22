@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link";
 import Image from "next/image";
+import ChatComponent from "../_components/chat";
+import { toast } from "sonner";
 
 interface Researcher {
   id: string;
@@ -15,15 +16,34 @@ interface Researcher {
   imageURL: string;
   isFollowing: boolean;
   isFollowingYou: boolean;
+  email: string;
 }
 
 export default function ResearchersPage() {
   const [researchers, setResearchers] = useState<Researcher[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedResearcher, setSelectedResearcher] = useState<Researcher | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string>();
+  const [followLoading, setFollowLoading] = useState<string | null>(null);
 
   useEffect(() => {
     fetchResearchers();
+    fetchCurrentUser();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch("/api/auth/user");
+      if (!response.ok) {
+        throw new Error("Failed to fetch current user");
+      }
+      const userData = await response.json();
+      setCurrentUserId(userData.id);
+    } catch (error) {
+      console.error("Error fetching current user:", error);
+      toast.error("Failed to fetch user information");
+    }
+  };
 
   const fetchResearchers = async () => {
     try {
@@ -32,17 +52,28 @@ export default function ResearchersPage() {
         throw new Error("Failed to fetch researchers");
       }
       const data = await response.json();
+      console.log("Fetched researchers:", data);
       setResearchers(data);
     } catch (error) {
       console.error("Error fetching researchers:", error);
+      toast.error("Failed to load researchers");
     } finally {
       setLoading(false);
     }
   };
 
   const handleFollow = async (researcherId: string) => {
+    if (!currentUserId) {
+      toast.error("Please log in to follow researchers");
+      return;
+    }
+
+    setFollowLoading(researcherId);
     try {
-      const response = await fetch("/api/researchers/follow", {
+      const targetResearcher = researchers.find((r) => r.id === researcherId);
+      const action = targetResearcher?.isFollowing ? "unfollow" : "follow";
+
+      const response = await fetch(`/api/researchers/${action}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -50,8 +81,10 @@ export default function ResearchersPage() {
         body: JSON.stringify({ researcherId }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to follow/unfollow");
+        throw new Error(data.error || `Failed to ${action} researcher`);
       }
 
       setResearchers((prev) =>
@@ -61,27 +94,38 @@ export default function ResearchersPage() {
             : researcher,
         ),
       );
+
+      toast.success(
+        `Successfully ${action}ed ${targetResearcher?.firstName} ${targetResearcher?.lastName}`,
+      );
     } catch (error) {
-      console.error("Error following/unfollowing:", error);
+      console.error("Error updating follow status:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to update follow status");
+
+      setResearchers((prev) =>
+        prev.map((researcher) =>
+          researcher.id === researcherId
+            ? { ...researcher, isFollowing: !researcher.isFollowing }
+            : researcher,
+        ),
+      );
+    } finally {
+      setFollowLoading(null);
     }
+  };
+
+  const handleOpenChat = (researcher: Researcher) => {
+    setSelectedResearcher(researcher);
+  };
+
+  const handleCloseChat = () => {
+    setSelectedResearcher(null);
   };
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <p className="text-center">Loading researchers...</p>
-      </div>
-    );
-  }
-
-  if (researchers.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8 text-center">Connect with Researchers</h1>
-        <div className="text-center p-8 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">No researchers found at the moment.</p>
-          <p className="text-gray-500 mt-2">Please check back later!</p>
-        </div>
       </div>
     );
   }
@@ -126,16 +170,25 @@ export default function ResearchersPage() {
                       onClick={() => handleFollow(researcher.id)}
                       variant="outline"
                       className="flex-1"
+                      disabled={followLoading === researcher.id}
                     >
-                      Unfollow
+                      {followLoading === researcher.id ? "..." : "Unfollow"}
                     </Button>
-                    <Link href={`/chat?researcherId=${researcher.id}`} className="flex-1">
-                      <Button className="w-full">Chat</Button>
-                    </Link>
+                    <Button
+                      onClick={() => handleOpenChat(researcher)}
+                      className="flex-1"
+                      disabled={followLoading === researcher.id}
+                    >
+                      Chat
+                    </Button>
                   </>
                 ) : (
-                  <Button onClick={() => handleFollow(researcher.id)} className="w-full">
-                    Follow
+                  <Button
+                    onClick={() => handleFollow(researcher.id)}
+                    className="w-full"
+                    disabled={followLoading === researcher.id}
+                  >
+                    {followLoading === researcher.id ? "..." : "Follow"}
                   </Button>
                 )}
               </div>
@@ -143,6 +196,23 @@ export default function ResearchersPage() {
           </Card>
         ))}
       </div>
+
+      {selectedResearcher && (
+        <div className="fixed bottom-4 right-4 w-96 h-[600px] bg-background border rounded-lg shadow-lg overflow-hidden">
+          <ChatComponent
+            recipientId={selectedResearcher.id}
+            recipientName={`${selectedResearcher.firstName} ${selectedResearcher.lastName}`}
+            recipientEmail={selectedResearcher.email}
+            recipientProfile={{
+              firstName: selectedResearcher.firstName,
+              lastName: selectedResearcher.lastName,
+            }}
+            currentUserId={currentUserId}
+            isOpen={true}
+            onClose={handleCloseChat}
+          />
+        </div>
+      )}
     </div>
   );
 }

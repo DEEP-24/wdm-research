@@ -45,8 +45,8 @@ model User {
 
   proposalReviews ProposalReview[]
 
-  followers  Followers[] @relation("follower")
-  followings Followers[] @relation("following")
+  following  Followers[] @relation("follower")
+  followedBy Followers[] @relation("following")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -63,7 +63,26 @@ model User {
   createdInvestmentOpportunities InvestmentOpportunity[] @relation("CreatedOpportunities")
   investments                    Investment[]            @relation("UserInvestments")
 
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+
   @@map("users")
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String
+  receiverId String
+  content    String   @db.Text
+  sentAt     DateTime @default(now())
+  isRead     Boolean  @default(false)
+
+  sender   User @relation("SentMessages", fields: [senderId], references: [id])
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@map("messages")
 }
 
 model Followers {

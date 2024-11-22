@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
     const { researcherId } = await req.json();
 
-    // Check if already following
+    // Check if the follow relationship exists
     const existingFollow = await db.followers.findUnique({
       where: {
         followerId_followingId: {
@@ -22,24 +22,26 @@ export async function POST(req: Request) {
       },
     });
 
-    if (existingFollow) {
-      return NextResponse.json({ error: "Already following" }, { status: 400 });
+    if (!existingFollow) {
+      return NextResponse.json({ error: "Not following this researcher" }, { status: 400 });
     }
 
-    // Create follow relationship
-    const follow = await db.followers.create({
-      data: {
-        followerId: currentUser.id,
-        followingId: researcherId,
+    // Delete follow relationship
+    const unfollow = await db.followers.delete({
+      where: {
+        followerId_followingId: {
+          followerId: currentUser.id,
+          followingId: researcherId,
+        },
       },
     });
 
-    return NextResponse.json(follow);
+    return NextResponse.json(unfollow);
   } catch (error) {
-    console.error("Error following researcher:", error);
+    console.error("Error unfollowing researcher:", error);
     return NextResponse.json(
       {
-        error: "Failed to follow researcher",
+        error: "Failed to unfollow researcher",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },

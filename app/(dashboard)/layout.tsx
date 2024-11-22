@@ -63,7 +63,7 @@ const roleBasedSidebarItems = {
     { icon: FileTextIcon, label: "Grant Applications", href: "/grant-applications" },
     { icon: HelpCircle, label: "Support", href: "/support" },
     { icon: Users2Icon, label: "Researchers", href: "/researchers" },
-    { icon: DollarSignIcon , label: "Investment Opportunities", href: "/investment-opportunities" },
+    { icon: DollarSignIcon, label: "Investment Opportunities", href: "/investment-opportunities" },
   ],
   investor: [
     { icon: HomeIcon, label: "Home", href: "/" },
@@ -98,9 +98,6 @@ export default function DashboardLayout({
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [messages, setMessages] = useState([{ text: "Hello, how are you?", sender: "Adam" }]);
-  const [inputMessage, setInputMessage] = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -186,13 +183,6 @@ export default function DashboardLayout({
   };
 
   const sidebarItems = currentUser ? getSidebarItems() : roleBasedSidebarItems.user;
-
-  const handleSendMessage = () => {
-    if (inputMessage.trim()) {
-      setMessages([...messages, { text: inputMessage, sender: "user" }]);
-      setInputMessage("");
-    }
-  };
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 to-indigo-100 lg:flex-row">
@@ -295,72 +285,6 @@ export default function DashboardLayout({
         <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6">
           <div className="pb-16 md:pb-0">{children}</div>
         </main>
-
-        {/* Chat interface */}
-        <div className="fixed bottom-0 left-0 right-0 md:right-4 md:left-auto md:bottom-4 z-10">
-          {isChatOpen ? (
-            <div className="bg-white rounded-t-lg md:rounded-lg shadow-lg flex flex-col h-96 md:w-80 w-full">
-              <div className="flex justify-between items-center p-4 border-b bg-blue-600 text-white rounded-t-lg">
-                <h3 className="font-semibold">Chat with {currentUser.firstName}</h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsChatOpen(false)}
-                  className="text-white hover:bg-blue-700"
-                >
-                  <XIcon className="h-4 w-4" />
-                </Button>
-              </div>
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
-                  {messages.map((message, index) => (
-                    <div
-                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                      key={index}
-                      className={`flex items-start ${
-                        message.sender === "user" ? "justify-end" : ""
-                      }`}
-                    >
-                      <div
-                        className={`rounded-lg p-2 max-w-[80%] ${
-                          message.sender === "user" ? "bg-blue-600 text-white" : "bg-blue-100"
-                        }`}
-                      >
-                        <span className="text-sm">{message.text}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-              <div className="p-4 border-t">
-                <div className="flex items-center">
-                  <Input
-                    className="flex-1 mr-2"
-                    placeholder="Type your message..."
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                  />
-                  <Button
-                    size="icon"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={handleSendMessage}
-                  >
-                    <SendIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <Button
-              className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 rounded-none md:rounded-full py-4 md:py-2"
-              onClick={() => setIsChatOpen(true)}
-            >
-              <MessageCircleIcon className="h-5 w-5 mr-2" />
-              Click to Chat
-            </Button>
-          )}
-        </div>
       </div>
     </div>
   );
