@@ -24,130 +24,188 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { PaperclipIcon, EyeIcon, DownloadIcon } from "lucide-react";
+import { PaperclipIcon, EyeIcon, DownloadIcon, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import type { User } from "@/types/user";
+import { useRouter } from "next/navigation";
 
-interface Project {
+interface ProjectProposal {
   id: string;
   title: string;
   description: string;
 }
 
 interface GrantApplication {
-  project_id: string;
-  project_title: string;
-  project_description: string;
-  request_amount: number;
+  id: string;
+  projectProposalId: string;
+  projectProposal: {
+    id: string;
+    title: string;
+    description: string;
+  };
+  requestAmount: number;
   keywords: string;
-  status: "submitted" | "under review" | "rejected" | "accepted";
-  reviewed_by?: {
+  status: "SUBMITTED" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED";
+  reviewedBy?: {
     firstName: string;
     lastName: string;
   };
-  attachments: { name: string; type: string }[];
+  attachments: { name: string; type: string; url: string }[];
 }
 
 export default function GrantApplications() {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [projects, setProjects] = useState<ProjectProposal[]>([]);
   const [applications, setApplications] = useState<GrantApplication[]>([]);
-  const [application, setApplication] = useState<GrantApplication>({
-    project_id: "",
-    project_title: "",
-    project_description: "",
-    request_amount: 0,
-    keywords: "",
-    status: "submitted",
-    attachments: [],
-  });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<GrantApplication | null>(null);
+  const [newApplication, setNewApplication] = useState({
+    projectId: "",
+    requestAmount: 0,
+    keywords: "",
+    attachments: [] as { name: string; type: string; url: string }[],
+  });
+  const [selectedProject, setSelectedProject] = useState<ProjectProposal | null>(null);
+  const [attachmentInput, setAttachmentInput] = useState<{
+    name: string;
+    url: string;
+  }>({
+    name: "",
+    url: "",
+  });
+  const router = useRouter();
 
   useEffect(() => {
-    const storedProjects = localStorage.getItem("projectProposals");
-    if (storedProjects) {
-      const parsedProjects = JSON.parse(storedProjects);
-      const convertedProjects: Project[] = parsedProjects.map((proposal: any) => ({
-        id: proposal.id.toString(),
-        title: proposal.title,
-        description: proposal.description,
-      }));
-      setProjects(convertedProjects);
-    }
+    const fetchUser = async () => {
+      try {
+        const response = await fetch("/api/auth/user");
+        if (!response.ok) {
+          throw new Error("Failed to fetch user");
+        }
+        const userData = await response.json();
+        setCurrentUser(userData);
+      } catch (error) {
+        console.error("Failed to fetch user:", error);
+        router.push("/login");
+      }
+    };
 
-    const storedApplications = localStorage.getItem("grantApplications");
-    if (storedApplications) {
-      const parsedApplications = JSON.parse(storedApplications);
-      // Ensure all applications have a valid status and parse reviewedBy
-      const validatedApplications = parsedApplications.map((app: any) => ({
-        ...app,
-        status: validateStatus(app.status),
-        reviewed_by: app.reviewedBy ? JSON.parse(app.reviewedBy) : undefined,
-      }));
-      setApplications(validatedApplications);
-    }
-  }, []);
+    fetchUser();
+  }, [router]);
 
-  // Add this function to validate and sanitize the status
-  const validateStatus = (status: string): GrantApplication["status"] => {
-    const validStatuses: GrantApplication["status"][] = [
-      "submitted",
-      "under review",
-      "rejected",
-      "accepted",
-    ];
-    return validStatuses.includes(status as GrantApplication["status"])
-      ? (status as GrantApplication["status"])
-      : "submitted";
+  const fetchApplications = async () => {
+    try {
+      const res = await fetch("/api/grant-applications");
+      if (!res.ok) {
+        throw new Error("Failed to fetch applications");
+      }
+      const data = await res.json();
+      setApplications(data);
+    } catch (_error) {
+      toast.error("Failed to fetch applications");
+    }
   };
+
+  const fetchProjects = async () => {
+    try {
+      const res = await fetch("/api/proposals");
+      if (!res.ok) {
+        throw new Error("Failed to fetch projects");
+      }
+      const data = await res.json();
+      setProjects(data);
+    } catch (_error) {
+      toast.error("Failed to fetch projects");
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchProjects();
+      fetchApplications();
+    }
+  }, [currentUser]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setApplication((prev) => ({ ...prev, [name]: value }));
+    setNewApplication((prev) => ({
+      ...prev,
+      [name]: name === "requestAmount" ? Number.parseFloat(value) || 0 : value,
+    }));
   };
 
   const handleProjectSelect = (projectId: string) => {
-    const selectedProject = projects.find((project) => project.id === projectId);
-    if (selectedProject) {
-      setApplication((prev) => ({
+    const project = projects.find((p) => p.id === projectId);
+    if (project) {
+      setSelectedProject(project);
+      setNewApplication((prev) => ({
         ...prev,
-        project_id: selectedProject.id,
-        project_title: selectedProject.title,
-        project_description: selectedProject.description,
+        projectId: project.id,
       }));
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newAttachments = Array.from(files).map((file) => ({
-        name: file.name,
-        type: file.type,
-      }));
-      setApplication((prev) => ({
+  const handleAddAttachment = () => {
+    if (attachmentInput.name && attachmentInput.url) {
+      setNewApplication((prev) => ({
         ...prev,
-        attachments: [...prev.attachments, ...newAttachments],
+        attachments: [
+          ...prev.attachments,
+          {
+            name: attachmentInput.name,
+            type: "link", // or determine type from URL
+            url: attachmentInput.url,
+          },
+        ],
       }));
+      setAttachmentInput({ name: "", url: "" }); // Reset input
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newApplication = { ...application, status: "submitted" as const };
-    const newApplications = [...applications, newApplication];
-    setApplications(newApplications);
-    localStorage.setItem("grantApplications", JSON.stringify(newApplications));
-    console.log("Submitting application:", newApplication);
-    setApplication({
-      project_id: "",
-      project_title: "",
-      project_description: "",
-      request_amount: 0,
-      keywords: "",
-      status: "submitted",
-      attachments: [],
-    });
-    setIsDialogOpen(false);
+    try {
+      // Validate required fields
+      if (!newApplication.projectId || !newApplication.requestAmount || !newApplication.keywords) {
+        toast.error("Please fill in all required fields");
+        return;
+      }
+
+      const res = await fetch("/api/grant-applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: newApplication.projectId,
+          requestAmount: Number(newApplication.requestAmount),
+          keywords: newApplication.keywords,
+          attachments: newApplication.attachments,
+        }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        throw new Error(error?.error || "Failed to submit application");
+      }
+
+      await fetchApplications();
+      setNewApplication({
+        projectId: "",
+        requestAmount: 0,
+        keywords: "",
+        attachments: [],
+      });
+      setSelectedProject(null);
+      setIsDialogOpen(false);
+      toast.success("Application submitted successfully!");
+    } catch (error) {
+      console.error("Submit error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to submit application");
+    }
   };
+
+  if (!currentUser) {
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-4 space-y-6">
@@ -181,8 +239,8 @@ export default function GrantApplications() {
                 <Input
                   id="project_title"
                   name="project_title"
-                  value={application.project_title}
-                  onChange={handleInputChange}
+                  value={selectedProject?.title || ""}
+                  disabled
                   required
                 />
               </div>
@@ -191,19 +249,19 @@ export default function GrantApplications() {
                 <Textarea
                   id="project_description"
                   name="project_description"
-                  value={application.project_description}
-                  onChange={handleInputChange}
+                  value={selectedProject?.description || ""}
+                  disabled
                   rows={5}
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="request_amount">Requested Amount ($)</Label>
+                <Label htmlFor="requestAmount">Requested Amount ($)</Label>
                 <Input
-                  id="request_amount"
-                  name="request_amount"
+                  id="requestAmount"
+                  name="requestAmount"
                   type="number"
-                  value={application.request_amount}
+                  value={newApplication.requestAmount}
                   onChange={handleInputChange}
                   required
                 />
@@ -213,36 +271,135 @@ export default function GrantApplications() {
                 <Input
                   id="keywords"
                   name="keywords"
-                  value={application.keywords}
+                  value={newApplication.keywords}
                   onChange={handleInputChange}
                   placeholder="e.g., sustainability, innovation, technology"
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="attachment">Attachments</Label>
-                <Input
-                  id="attachment"
-                  name="attachment"
-                  type="file"
-                  onChange={handleFileChange}
-                  className="border-blue-200 focus:border-blue-400"
-                  multiple
-                />
-              </div>
-              {application.attachments.length > 0 && (
-                <div>
-                  <Label>Selected Files:</Label>
-                  <ul className="list-disc pl-5">
-                    {application.attachments.map((file, index) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                      <li key={index} className="text-sm">
-                        {file.name}
-                      </li>
-                    ))}
-                  </ul>
+                <Label htmlFor="attachments">Attachments</Label>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="attachmentName" className="text-sm text-gray-600">
+                        Name
+                      </Label>
+                      <Input
+                        id="attachmentName"
+                        value={attachmentInput.name}
+                        onChange={(e) =>
+                          setAttachmentInput((prev) => ({ ...prev, name: e.target.value }))
+                        }
+                        placeholder="Document name"
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="attachmentUrl" className="text-sm text-gray-600">
+                        URL
+                      </Label>
+                      <Input
+                        id="attachmentUrl"
+                        value={attachmentInput.url}
+                        onChange={(e) =>
+                          setAttachmentInput((prev) => ({ ...prev, url: e.target.value }))
+                        }
+                        placeholder="https://..."
+                        className="border-blue-200 focus:border-blue-400"
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddAttachment}
+                    disabled={!attachmentInput.name || !attachmentInput.url}
+                    className="w-full"
+                  >
+                    Add Attachment
+                  </Button>
                 </div>
-              )}
+
+                {newApplication.attachments.length > 0 && (
+                  <div className="mt-4">
+                    <Label className="text-blue-600">Current Attachments:</Label>
+                    <ul className="list-disc pl-5 space-y-2">
+                      {newApplication.attachments.map((file, index) => (
+                        <li
+                          key={`attachment-${
+                            // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                            index
+                          }`}
+                          className="text-sm flex items-center gap-2 bg-gray-50 p-2 rounded"
+                        >
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                            <Input
+                              type="text"
+                              defaultValue={file.name}
+                              onBlur={(e) => {
+                                const currentAttachments = [...newApplication.attachments];
+                                const updatedAttachments = currentAttachments.map((att, idx) => {
+                                  if (idx === index) {
+                                    return { ...att, name: e.target.value || "Untitled" };
+                                  }
+                                  return att;
+                                });
+                                setNewApplication((prev) => ({
+                                  ...prev,
+                                  attachments: updatedAttachments,
+                                }));
+                              }}
+                              className="flex-1 h-8"
+                              placeholder="Name"
+                            />
+                            <Input
+                              type="text"
+                              defaultValue={file.url}
+                              onBlur={(e) => {
+                                const currentAttachments = [...newApplication.attachments];
+                                const updatedAttachments = currentAttachments.map((att, idx) => {
+                                  if (idx === index) {
+                                    return { ...att, url: e.target.value };
+                                  }
+                                  return att;
+                                });
+                                setNewApplication((prev) => ({
+                                  ...prev,
+                                  attachments: updatedAttachments,
+                                }));
+                              }}
+                              className="flex-1 h-8"
+                              placeholder="URL"
+                            />
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                              onClick={() => {
+                                const currentAttachments = [...newApplication.attachments];
+                                const updatedAttachments = currentAttachments.filter(
+                                  (_, i) => i !== index,
+                                );
+                                setNewApplication((prev) => ({
+                                  ...prev,
+                                  attachments: updatedAttachments,
+                                }));
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
               <Button type="submit" className="w-full">
                 Submit Application
               </Button>
@@ -344,7 +501,7 @@ export default function GrantApplications() {
                     >
                       <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                         <CardTitle className="text-lg font-bold truncate">
-                          {app.project_title}
+                          {app.projectProposal.title}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="flex-grow flex flex-col justify-between p-4 space-y-3">
@@ -354,27 +511,27 @@ export default function GrantApplications() {
                               Requested Amount:
                             </span>
                             <span className="text-sm font-semibold">
-                              ${app.request_amount.toLocaleString()}
+                              ${app.requestAmount.toLocaleString()}
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm font-medium text-gray-600">Status:</span>
                             <Badge
                               variant={
-                                app.status === "accepted"
+                                app.status === "ACCEPTED"
                                   ? "secondary"
-                                  : app.status === "rejected"
+                                  : app.status === "REJECTED"
                                     ? "destructive"
                                     : "default"
                               }
                               className="capitalize"
                             >
-                              {app.status}
+                              {app.status.toLowerCase()}
                             </Badge>
                           </div>
                         </div>
                         <div className="space-y-2">
-                          {app.reviewed_by && (
+                          {app.reviewedBy && (
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-gray-600">
                                 Reviewed by:
@@ -382,13 +539,13 @@ export default function GrantApplications() {
                               <div className="flex items-center">
                                 <Avatar className="h-6 w-6 mr-2">
                                   <AvatarImage
-                                    src={`https://api.dicebear.com/6.x/initials/svg?seed=${app.reviewed_by.firstName} ${app.reviewed_by.lastName}`}
+                                    src={`https://api.dicebear.com/6.x/initials/svg?seed=${app.reviewedBy.firstName} ${app.reviewedBy.lastName}`}
                                   />
                                   <AvatarFallback>
-                                    {`${app.reviewed_by.firstName[0]}${app.reviewed_by.lastName[0]}`}
+                                    {`${app.reviewedBy.firstName[0]}${app.reviewedBy.lastName[0]}`}
                                   </AvatarFallback>
                                 </Avatar>
-                                <span className="text-sm font-semibold">{`${app.reviewed_by.firstName} ${app.reviewed_by.lastName}`}</span>
+                                <span className="text-sm font-semibold">{`${app.reviewedBy.firstName} ${app.reviewedBy.lastName}`}</span>
                               </div>
                             </div>
                           )}
@@ -453,15 +610,15 @@ export default function GrantApplications() {
             <div className="space-y-4">
               <div>
                 <h3 className="font-semibold text-blue-600">Project Title</h3>
-                <p>{selectedApplication.project_title}</p>
+                <p>{selectedApplication.projectProposal.title}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-blue-600">Project Description</h3>
-                <p>{selectedApplication.project_description}</p>
+                <p>{selectedApplication.projectProposal.description}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-blue-600">Requested Amount</h3>
-                <p>${selectedApplication.request_amount.toLocaleString()}</p>
+                <p>${selectedApplication.requestAmount.toLocaleString()}</p>
               </div>
               <div>
                 <h3 className="font-semibold text-blue-600">Keywords</h3>
@@ -482,21 +639,21 @@ export default function GrantApplications() {
                 <h3 className="font-semibold text-blue-600">Status</h3>
                 <Badge
                   variant={
-                    selectedApplication.status === "accepted"
+                    selectedApplication.status === "ACCEPTED"
                       ? "secondary"
-                      : selectedApplication.status === "rejected"
+                      : selectedApplication.status === "REJECTED"
                         ? "destructive"
                         : "default"
                   }
                   className="capitalize"
                 >
-                  {selectedApplication.status}
+                  {selectedApplication.status.toLowerCase()}
                 </Badge>
               </div>
-              {selectedApplication.reviewed_by && (
+              {selectedApplication.reviewedBy && (
                 <div>
                   <h3 className="font-semibold text-blue-600">Reviewed By</h3>
-                  <p>{`${selectedApplication.reviewed_by.firstName} ${selectedApplication.reviewed_by.lastName}`}</p>
+                  <p>{`${selectedApplication.reviewedBy.firstName} ${selectedApplication.reviewedBy.lastName}`}</p>
                 </div>
               )}
               <div>
@@ -507,8 +664,13 @@ export default function GrantApplications() {
                       // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
                       <li key={index} className="flex items-center justify-between">
                         <span>{file.name}</span>
-                        <Button variant="ghost" size="sm" className="text-blue-600">
-                          <DownloadIcon className="w-4 h-4 mr-2" /> Download
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-blue-600"
+                          onClick={() => window.open(file.url, "_blank")}
+                        >
+                          <EyeIcon className="w-4 h-4 mr-2" /> View
                         </Button>
                       </li>
                     ))}

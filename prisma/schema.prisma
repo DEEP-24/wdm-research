@@ -56,6 +56,9 @@ model User {
   forums Forum[]
   posts  Post[]
 
+  submittedApplications GrantApplication[] @relation("SubmittedApplications")
+  reviewedApplications  GrantApplication[] @relation("ReviewedApplications")
+
   @@map("users")
 }
 
@@ -149,8 +152,9 @@ model ProjectProposal {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  GrantApplication GrantApplication[]
 
   @@map("project_proposals")
 }
@@ -222,6 +226,27 @@ model Post {
   @@map("posts")
 }
 
+model GrantApplication {
+  id                String          @id @default(uuid()) @map("id")
+  projectProposal   ProjectProposal @relation(fields: [projectProposalId], references: [id], onDelete: Cascade)
+  projectProposalId String
+  requestAmount     Float
+  keywords          String
+  status            GrantStatus     @default(SUBMITTED)
+  attachments       Json? // Will store array of {name: string, type: string, url: string}
+
+  reviewedBy   User?   @relation("ReviewedApplications", fields: [reviewedById], references: [id])
+  reviewedById String?
+
+  submittedBy   User   @relation("SubmittedApplications", fields: [submittedById], references: [id])
+  submittedById String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("grant_applications")
+}
+
 enum UserRole {
   ADMIN
   ORGANIZER
@@ -233,5 +258,12 @@ enum ProposalStatus {
   SUBMITTED
   UNDER_REVIEW
   APPROVED
+  REJECTED
+}
+
+enum GrantStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  ACCEPTED
   REJECTED
 }
