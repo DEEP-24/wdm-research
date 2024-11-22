@@ -1,61 +1,67 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { User } from "@/types/user";
 import { cn } from "@/lib/utils";
+import type { UserRole } from "@prisma/client";
+import { redirect } from "next/navigation";
+import { ExploreButton } from "./components/explore-button";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
-interface Investment {
-  opportunityId: string;
+type Investment = {
+  id: string;
   amount: number;
   date: string;
-}
+  opportunity: {
+    id: string;
+    title: string;
+    companyName: string;
+    riskLevel: "Low" | "Medium" | "High";
+  };
+};
 
-interface InvestmentOpportunity {
+interface User {
   id: string;
-  title: string;
-  companyName: string;
-  riskLevel: "Low" | "Medium" | "High";
+  role: UserRole;
 }
 
 export default function InvestmentsPage() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [investments, setInvestments] = useState<Investment[]>([]);
-  const [opportunities, setOpportunities] = useState<InvestmentOpportunity[]>([]);
-  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const userString = localStorage.getItem("currentUser");
-    if (userString) {
-      const user = JSON.parse(userString);
-      if (user.role !== "investor") {
-        router.push("/");
-      } else {
-        setCurrentUser(user);
+    const fetchUser = async () => {
+      const response = await fetch("/api/auth/user");
+      const data = await response.json();
+      setUser(data);
 
-        // Fetch user investments from localStorage
-        const storedInvestments = localStorage.getItem("userInvestments");
-        if (storedInvestments) {
-          setInvestments(JSON.parse(storedInvestments));
-        }
-
-        // Fetch investment opportunities from localStorage
-        const storedOpportunities = localStorage.getItem("investmentOpportunities");
-        if (storedOpportunities) {
-          setOpportunities(JSON.parse(storedOpportunities));
-        }
+      if (!data || data.role !== "INVESTOR") {
+        redirect("/");
       }
-    } else {
-      router.push("/login");
-    }
-  }, [router]);
+    };
+    fetchUser();
+  }, []);
 
-  if (!currentUser) {
-    return null;
-  }
+  useEffect(() => {
+    const fetchInvestments = async () => {
+      try {
+        const response = await fetch("/api/investments");
+        if (!response.ok) {
+          throw new Error("Failed to fetch investments");
+        }
+        const data = await response.json();
+        setInvestments(data);
+      } catch (error) {
+        console.error("Error fetching investments:", error);
+        toast.error("Failed to fetch investments");
+      }
+    };
+
+    if (user?.role === "INVESTOR") {
+      fetchInvestments();
+    }
+  }, [user]);
 
   const totalInvestment = investments.reduce((sum, investment) => sum + investment.amount, 0);
 
@@ -108,40 +114,32 @@ export default function InvestmentsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {investments.map((investment, index) => {
-                      const opportunity = opportunities.find(
-                        (opp) => opp.id === investment.opportunityId,
-                      );
-                      return (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                        <tr key={index} className="border-b border-blue-100">
-                          <td className="p-3 whitespace-nowrap">
-                            {opportunity?.title || "Unknown"}
-                          </td>
-                          <td className="p-3 whitespace-nowrap">
-                            {opportunity?.companyName || "Unknown"}
-                          </td>
-                          <td className="p-3 whitespace-nowrap">
-                            ${investment.amount.toLocaleString()}
-                          </td>
-                          <td className="p-3 whitespace-nowrap">
-                            {new Date(investment.date).toLocaleDateString()}
-                          </td>
-                          <td className="p-3 whitespace-nowrap">
-                            <span
-                              className={cn(
-                                "font-bold",
-                                opportunity?.riskLevel === "Low" && "text-green-600",
-                                opportunity?.riskLevel === "Medium" && "text-yellow-600",
-                                opportunity?.riskLevel === "High" && "text-red-600",
-                              )}
-                            >
-                              {opportunity?.riskLevel || "Unknown"}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {investments.map((investment) => (
+                      <tr key={investment.id} className="border-b border-blue-100">
+                        <td className="p-3 whitespace-nowrap">{investment.opportunity.title}</td>
+                        <td className="p-3 whitespace-nowrap">
+                          {investment.opportunity.companyName}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          ${investment.amount.toLocaleString()}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {new Date(investment.date).toLocaleDateString()}
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          <span
+                            className={cn(
+                              "font-bold",
+                              investment.opportunity.riskLevel === "Low" && "text-green-600",
+                              investment.opportunity.riskLevel === "Medium" && "text-yellow-600",
+                              investment.opportunity.riskLevel === "High" && "text-red-600",
+                            )}
+                          >
+                            {investment.opportunity.riskLevel}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -151,9 +149,7 @@ export default function InvestmentsPage() {
       )}
 
       <div className="mt-8">
-        <Button onClick={() => router.push("/investment-opportunities")}>
-          Explore More Opportunities
-        </Button>
+        <ExploreButton />
       </div>
     </div>
   );
