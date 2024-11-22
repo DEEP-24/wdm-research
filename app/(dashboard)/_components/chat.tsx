@@ -37,6 +37,8 @@ interface ChatComponentProps {
   currentUserId?: string;
   isOpen: boolean;
   onClose: () => void;
+  onBack?: () => void;
+  isMobileView?: boolean;
 }
 
 export default function ChatComponent({
@@ -47,6 +49,8 @@ export default function ChatComponent({
   currentUserId,
   isOpen,
   onClose,
+  onBack,
+  isMobileView,
 }: ChatComponentProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -165,6 +169,28 @@ export default function ChatComponent({
       <div className="p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
+            {isMobileView && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                className="md:hidden h-8 w-8 mr-2"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m15 18-6-6 6-6" />
+                </svg>
+              </Button>
+            )}
             <Avatar className="h-10 w-10">
               {recipientProfile.imageURL ? (
                 <AvatarImage src={recipientProfile.imageURL} alt={recipientName} />
@@ -184,7 +210,12 @@ export default function ChatComponent({
               <p className="text-sm text-muted-foreground">{recipientEmail}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-8 w-8 rounded-full md:block hidden"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
