@@ -6,7 +6,6 @@ export async function GET() {
   try {
     const opportunities = await db.fundingOpportunity.findMany({
       include: {
-        investments: true,
         createdBy: {
           select: {
             id: true,
@@ -83,7 +82,6 @@ export async function POST(req: Request) {
             email: true,
           },
         },
-        investments: true,
       },
     });
 

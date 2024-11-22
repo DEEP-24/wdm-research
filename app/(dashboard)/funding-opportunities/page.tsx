@@ -64,10 +64,15 @@ export default function FundingOpportunities() {
   const fetchOpportunities = async () => {
     try {
       const response = await fetch("/api/funding-opportunities");
+      if (!response.ok) {
+        throw new Error("Failed to fetch opportunities");
+      }
       const data = await response.json();
-      setOpportunities(data);
-    } catch {
+      setOpportunities(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Fetch opportunities error:", error);
       toast.error("Failed to fetch opportunities");
+      setOpportunities([]);
     }
   };
 
@@ -298,9 +303,17 @@ export default function FundingOpportunities() {
                   <div>
                     <h4 className="font-semibold mb-2">Topics:</h4>
                     <div className="flex flex-wrap gap-2">
-                      {JSON.parse(opportunity.topics).map((topic: string, index: number) => (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                        <Badge key={index} variant="secondary">
+                      {(typeof opportunity.topics === "string"
+                        ? JSON.parse(opportunity.topics)
+                        : opportunity.topics
+                      ).map((topic: string, index: number) => (
+                        <Badge
+                          key={`${topic}-${
+                            // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                            index
+                          }`}
+                          variant="secondary"
+                        >
                           {topic}
                         </Badge>
                       ))}
