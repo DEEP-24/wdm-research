@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { UserRole } from "@prisma/client";
 
 interface EventRegistration {
   id: number;
@@ -30,6 +31,10 @@ interface EventRegistration {
   bookingDate: Date;
   event: Event;
   session: EventSession;
+  user: {
+    name: string;
+    email: string;
+  };
 }
 
 interface Event {
@@ -67,7 +72,7 @@ export default function ReservationsPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch("/api/user/profile");
+        const response = await fetch("/api/auth/user");
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);
@@ -91,7 +96,9 @@ export default function ReservationsPage() {
       }
 
       try {
-        const response = await fetch("/api/reservations");
+        const endpoint =
+          user.role === UserRole.ORGANIZER ? "/api/reservations/all" : "/api/reservations";
+        const response = await fetch(endpoint);
         if (!response.ok) {
           throw new Error("Failed to fetch reservations");
         }
@@ -150,7 +157,7 @@ export default function ReservationsPage() {
     <div className="container mx-auto p-4">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-blue-700 text-center sm:text-left">
-          My Reservations
+          {user?.role === UserRole.ORGANIZER ? "All Reservations" : "My Reservations"}
         </h1>
         <Button onClick={handleBackToEvents}>Back to Events</Button>
       </div>
@@ -161,31 +168,42 @@ export default function ReservationsPage() {
             <Card key={registration.id} className="mb-4 bg-white shadow-lg">
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-xl font-semibold text-blue-700">
-                    {registration.event.title} - {registration.session.title}
-                  </CardTitle>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm">
-                        Cancel Reservation
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to cancel this reservation? This action cannot be
-                          undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>No, keep it</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleCancelReservation(registration.id)}>
-                          Yes, cancel it
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <div>
+                    <CardTitle className="text-xl font-semibold text-blue-700">
+                      {registration.event.title} - {registration.session.title}
+                    </CardTitle>
+                    {user?.role === UserRole.ORGANIZER && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        Reserved by: {registration.user.name} ({registration.user.email})
+                      </p>
+                    )}
+                  </div>
+                  {user?.role !== UserRole.ORGANIZER && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          Cancel Reservation
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to cancel this reservation? This action cannot be
+                            undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>No, keep it</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleCancelReservation(registration.id)}
+                          >
+                            Yes, cancel it
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -214,7 +232,11 @@ export default function ReservationsPage() {
         </ScrollArea>
       ) : (
         <Card className="bg-white shadow-lg p-6 text-center">
-          <p className="text-lg mb-4">You haven't made any reservations yet.</p>
+          <p className="text-lg mb-4">
+            {user?.role === UserRole.ORGANIZER
+              ? "There are no reservations yet."
+              : "You haven't made any reservations yet."}
+          </p>
           <Link href="/events" className="text-blue-600 hover:underline">
             Browse available events
           </Link>

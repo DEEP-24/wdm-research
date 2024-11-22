@@ -31,6 +31,7 @@ export default function ProfilePage() {
     city: "",
     state: "",
     zipcode: "",
+    role: "",
   });
 
   useEffect(() => {
@@ -58,7 +59,6 @@ export default function ProfilePage() {
       setLoading(false);
     }
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -242,73 +242,81 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <div className="md:col-span-2">
-                <Label htmlFor="researchInterests">Research Interests</Label>
-                <Textarea
-                  id="researchInterests"
-                  name="researchInterests"
-                  value={profile.researchInterests}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className="min-h-[100px]"
-                />
-              </div>
+              {profile.role === "USER" && (
+                <>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="researchInterests">Research Interests</Label>
+                    <Textarea
+                      id="researchInterests"
+                      name="researchInterests"
+                      value={profile.researchInterests}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="min-h-[100px]"
+                    />
+                  </div>
 
-              <div className="md:col-span-2">
-                <Label htmlFor="expertise">Expertise</Label>
-                <Textarea
-                  id="expertise"
-                  name="expertise"
-                  value={profile.expertise}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className="min-h-[100px]"
-                />
-              </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="expertise">Expertise</Label>
+                    <Textarea
+                      id="expertise"
+                      name="expertise"
+                      value={profile.expertise}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                </>
+              )}
 
-              <div>
-                <Label htmlFor="linkedInURL">LinkedIn URL</Label>
-                <Input
-                  id="linkedInURL"
-                  name="linkedInURL"
-                  value={profile.linkedInURL || ""}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                />
-              </div>
+              {profile.role === "USER" && (
+                <>
+                  <div>
+                    <Label htmlFor="linkedInURL">LinkedIn URL</Label>
+                    <Input
+                      id="linkedInURL"
+                      name="linkedInURL"
+                      value={profile.linkedInURL || ""}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
 
-              <div>
-                <Label htmlFor="twitterURL">Twitter URL</Label>
-                <Input
-                  id="twitterURL"
-                  name="twitterURL"
-                  value={profile.twitterURL || ""}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                />
-              </div>
+                  <div>
+                    <Label htmlFor="twitterURL">Twitter URL</Label>
+                    <Input
+                      id="twitterURL"
+                      name="twitterURL"
+                      value={profile.twitterURL || ""}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
 
-              <div>
-                <Label htmlFor="githubURL">GitHub URL</Label>
-                <Input
-                  id="githubURL"
-                  name="githubURL"
-                  value={profile.githubURL || ""}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                />
-              </div>
+                  <div>
+                    <Label htmlFor="githubURL">GitHub URL</Label>
+                    <Input
+                      id="githubURL"
+                      name="githubURL"
+                      value={profile.githubURL || ""}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
 
-              <div>
-                <Label htmlFor="papers">Papers</Label>
-                <Input
-                  id="papers"
-                  name="papers"
-                  value={profile.papers || ""}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                />
-              </div>
+                  <div>
+                    <Label htmlFor="papers">Papers</Label>
+                    <Input
+                      id="papers"
+                      name="papers"
+                      value={profile.papers || ""}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             {isEditing ? (

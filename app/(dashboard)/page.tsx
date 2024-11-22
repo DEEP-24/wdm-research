@@ -65,12 +65,6 @@ const platformFeatures = [
   },
 ];
 
-const latestNews = [
-  { title: "New Quantum Computing Grant Announced", date: "2023-06-15" },
-  { title: "ResearchSphere Reaches 1 Million Users", date: "2023-06-10" },
-  { title: "AI Ethics Symposium: Registration Open", date: "2023-06-05" },
-];
-
 const quickLinks = {
   adminUser: [
     { title: "Upcoming Events", href: "/events", icon: CalendarIcon },
@@ -79,8 +73,12 @@ const quickLinks = {
     { title: "User Profile", href: "/profile", icon: UsersIcon },
   ],
   investor: [
-    { title: "Funding Opportunities", href: "/funding-opportunities", icon: BadgeDollarSignIcon },
-    { title: "My Investments", href: "/", icon: BriefcaseIcon },
+    {
+      title: "Investment Opportunities",
+      href: "/investment-opportunities",
+      icon: BadgeDollarSignIcon,
+    },
+    { title: "My Investments", href: "/investments", icon: BriefcaseIcon },
     { title: "User Profile", href: "/profile", icon: UsersIcon },
   ],
   organizer: [
@@ -107,26 +105,49 @@ interface Event {
 export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [latestNews, setLatestNews] = useState<Event[]>([]);
+  const [reservations, setReservations] = useState([]);
   const router = useRouter();
 
   useEffect(() => {
-    const userString = localStorage.getItem("currentUser");
-    if (userString) {
-      setCurrentUser(JSON.parse(userString));
-    } else {
-      router.push("/login");
-    }
-
-    const storedEvents = localStorage.getItem("events");
-    if (storedEvents) {
-      const parsedEvents: Event[] = JSON.parse(storedEvents, (key, value) => {
-        if (key === "start_date" || key === "end_date" || key === "registration_deadline") {
-          return new Date(value);
+    const fetchData = async () => {
+      try {
+        // Fetch user
+        const userResponse = await fetch("/api/auth/user");
+        if (!userResponse.ok) {
+          throw new Error("Failed to fetch user");
         }
-        return value;
-      });
-      setUpcomingEvents(parsedEvents);
-    }
+        const userData = await userResponse.json();
+        if (userData) {
+          setCurrentUser(userData);
+        } else {
+          router.push("/login");
+        }
+
+        // Fetch events
+        const eventsResponse = await fetch("/api/events");
+        if (eventsResponse.ok) {
+          const eventsData = await eventsResponse.json();
+          setUpcomingEvents(eventsData);
+
+          const sortedEvents = [...eventsData]
+            .sort((a, b) => moment(b.start_date).diff(moment(a.start_date)))
+            .slice(0, 3);
+          setLatestNews(sortedEvents);
+        }
+
+        // Fetch reservations
+        const reservationsResponse = await fetch("/api/reservations");
+        if (reservationsResponse.ok) {
+          const reservationsData = await reservationsResponse.json();
+          setReservations(reservationsData);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
   }, [router]);
 
   if (!currentUser) {
@@ -137,20 +158,20 @@ export default function DashboardPage() {
     switch (currentUser.role) {
       case UserRole.ADMIN:
       case UserRole.USER:
-        return renderAdminUserDashboard();
+        return renderAdminUserDashboard(latestNews);
       case UserRole.INVESTOR:
         return renderInvestorDashboard();
       case UserRole.ORGANIZER:
-        return renderOrganizerDashboard(upcomingEvents);
+        return renderOrganizerDashboard(upcomingEvents, reservations);
       default:
-        return renderAdminUserDashboard();
+        return renderAdminUserDashboard(latestNews);
     }
   };
 
   return <div className="container mx-auto px-4 py-3">{renderDashboardContent()}</div>;
 }
 
-function renderAdminUserDashboard() {
+function renderAdminUserDashboard(latestNews: Event[]) {
   return (
     <>
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
@@ -210,13 +231,18 @@ function renderAdminUserDashboard() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
-              {latestNews.map((news, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                <li key={index} className="flex justify-between items-center">
-                  <span>{news.title}</span>
-                  <span className="text-sm text-gray-500">{news.date}</span>
-                </li>
-              ))}
+              {latestNews.length > 0 ? (
+                latestNews.map((news: Event) => (
+                  <li key={news.id} className="flex justify-between items-center">
+                    <span>{news.title}</span>
+                    <span className="text-sm text-gray-500">
+                      {moment(news.start_date).format("YYYY-MM-DD")}
+                    </span>
+                  </li>
+                ))
+              ) : (
+                <li>No recent updates</li>
+              )}
             </ul>
           </CardContent>
         </Card>
@@ -354,10 +380,7 @@ function renderInvestorDashboard() {
   );
 }
 
-function renderOrganizerDashboard(upcomingEvents: Event[]) {
-  // Fetch reservations from localStorage
-  const storedReservations = localStorage.getItem("reservations");
-  const reservations = storedReservations ? JSON.parse(storedReservations) : [];
+function renderOrganizerDashboard(upcomingEvents: Event[], reservations: any[]) {
   const totalReservations = reservations.length;
 
   const stats = [
@@ -372,7 +395,7 @@ function renderOrganizerDashboard(upcomingEvents: Event[]) {
   const filteredUpcomingEvents = upcomingEvents
     .filter((event) => moment(event.start_date).isAfter(moment()))
     .sort((a, b) => moment(a.start_date).diff(moment(b.start_date)))
-    .slice(0, 5); // Show only the next 5 upcoming events
+    .slice(0, 5);
 
   return (
     <>
