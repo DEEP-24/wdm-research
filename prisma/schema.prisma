@@ -17,8 +17,8 @@ model User {
 
   imageURL String
 
-  researchInterests String
-  expertise         String
+  researchInterests String?
+  expertise         String?
 
   lastPasswordResetAt DateTime?
 

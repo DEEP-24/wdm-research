@@ -14,26 +14,46 @@ export const registerSchema = z
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Invalid email address"),
     password: z.string().min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
-    researchInterests: z.string().min(1, "Research interests are required"),
-    expertise: z.string().min(1, "Expertise is required"),
-    role: z.enum([
-      UserRole.ADMIN.toLowerCase(),
-      UserRole.ORGANIZER.toLowerCase(),
-      UserRole.INVESTOR.toLowerCase(),
-      UserRole.USER.toLowerCase(),
-    ] as const),
-    phone: z.string().min(10, "Phone number must be at least 10 digits"),
-    streetNo: z.string().min(1, "Street number is required"),
+    confirmPassword: z.string(),
+    role: z.enum(["user", "organizer", "investor"]),
+    phone: z.string().min(1, "Phone number is required"),
+    street: z.string().min(1, "Street address is required"),
     aptNo: z.string().optional(),
     city: z.string().min(1, "City is required"),
     state: z.string().min(1, "State is required"),
-    zipcode: z.string().min(5, "Valid zipcode is required"),
+    zipcode: z.string().min(1, "Zipcode is required"),
     dob: z.string().min(1, "Date of birth is required"),
+    expertise: z.string().optional(),
+    researchInterests: z.string().optional(),
+    imageURL: z.string().default("/default-avatar.png"),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
+  .superRefine((data, ctx) => {
+    // Validate password match
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Passwords don't match",
+        path: ["confirmPassword"],
+      });
+    }
+
+    // Validate expertise and researchInterests for user role
+    if (data.role === "user") {
+      if (!data.expertise) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Expertise is required for users",
+          path: ["expertise"],
+        });
+      }
+      if (!data.researchInterests) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Research interests are required for users",
+          path: ["researchInterests"],
+        });
+      }
+    }
   });
 
 export type RegisterFormData = z.infer<typeof registerSchema>;

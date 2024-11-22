@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         lastName: validatedData.lastName,
         role,
         phone: validatedData.phone,
-        streetNo: validatedData.streetNo,
+        street: validatedData.street,
         aptNo: validatedData.aptNo || "",
         city: validatedData.city,
         state: validatedData.state,
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
         dob: new Date(validatedData.dob),
         expertise: validatedData.expertise,
         researchInterests: validatedData.researchInterests,
+        imageURL: validatedData.imageURL || "/default-avatar.png",
       },
     });
 

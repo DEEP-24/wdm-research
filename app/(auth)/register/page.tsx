@@ -34,6 +34,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<"user" | "organizer" | "investor">("user");
 
   const {
     register,
@@ -44,8 +45,18 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       role: "user",
+      imageURL: "/default-avatar.png",
     },
   });
+
+  const handleRoleChange = (value: "user" | "organizer" | "investor") => {
+    setSelectedRole(value);
+    setValue("role", value);
+    if (value !== "user") {
+      setValue("expertise", "");
+      setValue("researchInterests", "");
+    }
+  };
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
@@ -205,19 +216,35 @@ export default function RegisterPage() {
                 <Label htmlFor="role" className="text-xs sm:text-sm font-medium text-blue-800">
                   Role
                 </Label>
-                <Select onValueChange={(value) => setValue("role", value)} defaultValue="user">
+                <Select onValueChange={handleRoleChange} defaultValue="user">
                   <SelectTrigger className="bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all text-sm">
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.values(UserRole).map((role) => (
-                      <SelectItem key={role} value={role.toLowerCase()}>
-                        {role.charAt(0) + role.slice(1).toLowerCase()}
-                      </SelectItem>
-                    ))}
+                    {Object.values(UserRole)
+                      .filter((role) => role !== "ADMIN")
+                      .map((role) => (
+                        <SelectItem
+                          key={role}
+                          value={role.toLowerCase() as "user" | "organizer" | "investor"}
+                        >
+                          {role.charAt(0) + role.slice(1).toLowerCase()}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 {errors.role && <p className="text-xs text-red-500">{errors.role.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="imageURL" className="text-xs sm:text-sm font-medium text-blue-800">
+                  Profile Image URL
+                </Label>
+                <Input
+                  {...register("imageURL")}
+                  className="bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all text-sm"
+                  placeholder="https://example.com/your-image.jpg"
+                />
               </div>
 
               <div className="space-y-2">
@@ -235,19 +262,17 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="streetNo" className="text-xs sm:text-sm font-medium text-blue-800">
-                  Street Number
+                <Label htmlFor="street" className="text-xs sm:text-sm font-medium text-blue-800">
+                  Street Address
                 </Label>
                 <Input
-                  {...register("streetNo")}
+                  {...register("street")}
                   className={cn(
                     "bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all text-sm",
-                    errors.streetNo && "border-red-500",
+                    errors.street && "border-red-500",
                   )}
                 />
-                {errors.streetNo && (
-                  <p className="text-xs text-red-500">{errors.streetNo.message}</p>
-                )}
+                {errors.street && <p className="text-xs text-red-500">{errors.street.message}</p>}
               </div>
 
               <div className="space-y-2">
@@ -318,41 +343,48 @@ export default function RegisterPage() {
                 {errors.dob && <p className="text-xs text-red-500">{errors.dob.message}</p>}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="expertise" className="text-xs sm:text-sm font-medium text-blue-800">
-                  Expertise
-                </Label>
-                <Input
-                  {...register("expertise")}
-                  className={cn(
-                    "bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all text-sm",
-                    errors.expertise && "border-red-500",
-                  )}
-                />
-                {errors.expertise && (
-                  <p className="text-xs text-red-500">{errors.expertise.message}</p>
-                )}
-              </div>
+              {selectedRole === "user" && (
+                <>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="expertise"
+                      className="text-xs sm:text-sm font-medium text-blue-800"
+                    >
+                      Expertise
+                    </Label>
+                    <Input
+                      {...register("expertise")}
+                      className={cn(
+                        "bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all text-sm",
+                        errors.expertise && "border-red-500",
+                      )}
+                    />
+                    {errors.expertise && (
+                      <p className="text-xs text-red-500">{errors.expertise.message}</p>
+                    )}
+                  </div>
 
-              <div className="space-y-2 md:col-span-2 lg:col-span-3">
-                <Label
-                  htmlFor="researchInterests"
-                  className="text-xs sm:text-sm font-medium text-blue-800"
-                >
-                  Research Interests
-                </Label>
-                <Input
-                  {...register("researchInterests")}
-                  placeholder="e.g., AI, Climate Science, Neurobiology"
-                  className={cn(
-                    "bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all text-sm",
-                    errors.researchInterests && "border-red-500",
-                  )}
-                />
-                {errors.researchInterests && (
-                  <p className="text-xs text-red-500">{errors.researchInterests.message}</p>
-                )}
-              </div>
+                  <div className="space-y-2 md:col-span-2 lg:col-span-3">
+                    <Label
+                      htmlFor="researchInterests"
+                      className="text-xs sm:text-sm font-medium text-blue-800"
+                    >
+                      Research Interests
+                    </Label>
+                    <Input
+                      {...register("researchInterests")}
+                      placeholder="e.g., AI, Climate Science, Neurobiology"
+                      className={cn(
+                        "bg-white/70 border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400 transition-all text-sm",
+                        errors.researchInterests && "border-red-500",
+                      )}
+                    />
+                    {errors.researchInterests && (
+                      <p className="text-xs text-red-500">{errors.researchInterests.message}</p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             <Button
