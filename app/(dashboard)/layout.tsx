@@ -24,6 +24,7 @@ import {
   HelpCircle,
   HomeIcon,
   LogOutIcon,
+  MailWarningIcon,
   MenuIcon,
   MessageCircleIcon,
   MessageSquareIcon,
@@ -67,6 +68,7 @@ const roleBasedSidebarItems = {
     { icon: Users2Icon, label: "Researchers", href: "/researchers" },
     { icon: DollarSignIcon, label: "Investment Opportunities", href: "/investment-opportunities" },
     { icon: MessageSquareIcon, label: "Chat", href: "/chat" },
+    { icon: MailWarningIcon, label: "Support Requests", href: "/support_requests" },
   ],
   investor: [
     { icon: HomeIcon, label: "Home", href: "/" },

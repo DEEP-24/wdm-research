@@ -113,7 +113,7 @@ const EditEventButton = ({
       if (Number.isNaN(dateObj.getTime())) {
         return "";
       }
-      return moment(dateObj).format('YYYY-MM-DDTHH:mm');
+      return moment(dateObj).format("YYYY-MM-DDTHH:mm");
     } catch {
       return "";
     }
@@ -300,10 +300,10 @@ const EditEventButton = ({
           id: event.sessions[index]?.id,
           title: data.sessions[index].title,
           description: data.sessions[index].description,
-          startTime: savedSessionData[index]?.startTime 
+          startTime: savedSessionData[index]?.startTime
             ? moment(savedSessionData[index].startTime).utc().toISOString()
             : null,
-          endTime: savedSessionData[index]?.endTime 
+          endTime: savedSessionData[index]?.endTime
             ? moment(savedSessionData[index].endTime).utc().toISOString()
             : null,
           location: data.isVirtual ? null : data.location,
@@ -341,12 +341,8 @@ const EditEventButton = ({
       } = {};
 
       event.sessions.forEach((session, index) => {
-        const startTime = session.startTime 
-          ? moment.utc(session.startTime).local().toDate()
-          : null;
-        const endTime = session.endTime 
-          ? moment.utc(session.endTime).local().toDate()
-          : null;
+        const startTime = session.startTime ? moment.utc(session.startTime).local().toDate() : null;
+        const endTime = session.endTime ? moment.utc(session.endTime).local().toDate() : null;
 
         initialSessionData[index] = {
           startTime,
@@ -567,12 +563,18 @@ const EditEventButton = ({
                             type="datetime-local"
                             value={formatDateForInput(savedSessionData[index]?.startTime)}
                             onChange={(e) => handleStartTimeChange(e, index)}
-                            min={watch("startDate") 
-                              ? `${new Date(watch("startDate")).toISOString().split("T")[0]}T00:00`
-                              : undefined}
-                            max={watch("endDate")
-                              ? `${new Date(watch("endDate")).toISOString().split("T")[0]}T23:59`
-                              : undefined}
+                            min={
+                              watch("startDate")
+                                ? `${
+                                    new Date(watch("startDate")).toISOString().split("T")[0]
+                                  }T00:00`
+                                : undefined
+                            }
+                            max={
+                              watch("endDate")
+                                ? `${new Date(watch("endDate")).toISOString().split("T")[0]}T23:59`
+                                : undefined
+                            }
                             className="border-blue-200 focus:border-blue-400"
                             disabled={savedSessions[index] && !editingSessions[index]}
                           />
@@ -585,12 +587,18 @@ const EditEventButton = ({
                             type="datetime-local"
                             value={formatDateForInput(savedSessionData[index]?.endTime)}
                             onChange={(e) => handleEndTimeChange(e, index)}
-                            min={watch("startDate")
-                              ? `${new Date(watch("startDate")).toISOString().split("T")[0]}T00:00`
-                              : undefined}
-                            max={watch("endDate")
-                              ? `${new Date(watch("endDate")).toISOString().split("T")[0]}T23:59`
-                              : undefined}
+                            min={
+                              watch("startDate")
+                                ? `${
+                                    new Date(watch("startDate")).toISOString().split("T")[0]
+                                  }T00:00`
+                                : undefined
+                            }
+                            max={
+                              watch("endDate")
+                                ? `${new Date(watch("endDate")).toISOString().split("T")[0]}T23:59`
+                                : undefined
+                            }
                             className="border-blue-200 focus:border-blue-400"
                             disabled={savedSessions[index] && !editingSessions[index]}
                           />
@@ -804,7 +812,7 @@ export default function EventsPage() {
       if (Number.isNaN(dateObj.getTime())) {
         return "";
       }
-      return moment(dateObj).format('YYYY-MM-DDTHH:mm');
+      return moment(dateObj).format("YYYY-MM-DDTHH:mm");
     } catch {
       return "";
     }
@@ -1050,12 +1058,12 @@ export default function EventsPage() {
       }
 
       try {
-        const response = await fetch(`/api/reservations`);
+        const response = await fetch("/api/reservations");
         if (!response.ok) {
           throw new Error("Failed to fetch registrations");
         }
         const data = await response.json();
-        console.log('Fetched registrations:', data);
+        console.log("Fetched registrations:", data);
         setRegistrations(data);
       } catch (error) {
         console.error("Failed to fetch registrations:", error);
@@ -1175,11 +1183,9 @@ export default function EventsPage() {
   };
 
   const isSessionRegistered = (eventId: number | string, sessionId: number | string) => {
-    return registrations.some(
-      (reg) => {
-        return reg.eventId === (eventId) && reg.sessionId === (sessionId);
-      }
-    );
+    return registrations.some((reg) => {
+      return reg.eventId === eventId && reg.sessionId === sessionId;
+    });
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -1472,12 +1478,20 @@ export default function EventsPage() {
                                   type="datetime-local"
                                   value={formatDateForInput(savedSessionData[index]?.startTime)}
                                   onChange={(e) => handleStartTimeChange(e, index)}
-                                  min={watch("startDate") 
-                                    ? `${new Date(watch("startDate")).toISOString().split("T")[0]}T00:00`
-                                    : undefined}
-                                  max={watch("endDate")
-                                    ? `${new Date(watch("endDate")).toISOString().split("T")[0]}T23:59`
-                                    : undefined}
+                                  min={
+                                    watch("startDate")
+                                      ? `${
+                                          new Date(watch("startDate")).toISOString().split("T")[0]
+                                        }T00:00`
+                                      : undefined
+                                  }
+                                  max={
+                                    watch("endDate")
+                                      ? `${
+                                          new Date(watch("endDate")).toISOString().split("T")[0]
+                                        }T23:59`
+                                      : undefined
+                                  }
                                   className="border-blue-200 focus:border-blue-400"
                                   disabled={savedSessions[index] && !editingSessions[index]}
                                 />
@@ -1493,12 +1507,20 @@ export default function EventsPage() {
                                   type="datetime-local"
                                   value={formatDateForInput(savedSessionData[index]?.endTime)}
                                   onChange={(e) => handleEndTimeChange(e, index)}
-                                  min={watch("startDate")
-                                    ? `${new Date(watch("startDate")).toISOString().split("T")[0]}T00:00`
-                                    : undefined}
-                                  max={watch("endDate")
-                                    ? `${new Date(watch("endDate")).toISOString().split("T")[0]}T23:59`
-                                    : undefined}
+                                  min={
+                                    watch("startDate")
+                                      ? `${
+                                          new Date(watch("startDate")).toISOString().split("T")[0]
+                                        }T00:00`
+                                      : undefined
+                                  }
+                                  max={
+                                    watch("endDate")
+                                      ? `${
+                                          new Date(watch("endDate")).toISOString().split("T")[0]
+                                        }T23:59`
+                                      : undefined
+                                  }
                                   className="border-blue-200 focus:border-blue-400"
                                   disabled={savedSessions[index] && !editingSessions[index]}
                                 />
@@ -1654,7 +1676,7 @@ export default function EventsPage() {
                 : new Date(),
               end: event.endDate
                 ? new Date(
-                    new Date(event.endDate).getTime() + new Date().getTimezoneOffset() * 60000
+                    new Date(event.endDate).getTime() + new Date().getTimezoneOffset() * 60000,
                   )
                 : new Date(),
             }))}

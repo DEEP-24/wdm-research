@@ -329,6 +329,19 @@ model Investment {
   @@map("investments")
 }
 
+model ContactUs {
+  id      String @id @default(uuid()) @map("id")
+  name    String
+  email   String
+  subject String
+  message String @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("contact_us")
+}
+
 enum UserRole {
   ADMIN
   ORGANIZER

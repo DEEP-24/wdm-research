@@ -4,16 +4,22 @@ import { PrismaClient, UserRole } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
+  // Delete records in the correct order based on foreign key relationships
+  await prisma.message.deleteMany();
   await prisma.investment.deleteMany();
   await prisma.investmentOpportunity.deleteMany();
   await prisma.fundingOpportunity.deleteMany();
-  await prisma.projectProposal.deleteMany();
+  await prisma.grantApplication.deleteMany();
   await prisma.proposalReview.deleteMany();
+  await prisma.projectProposal.deleteMany();
   await prisma.eventRegistration.deleteMany();
-  await prisma.sharedFile.deleteMany();
+  await prisma.eventSession.deleteMany();
   await prisma.event.deleteMany();
-  await prisma.forum.deleteMany();
   await prisma.post.deleteMany();
+  await prisma.forum.deleteMany();
+  await prisma.sharedFile.deleteMany();
+  await prisma.followers.deleteMany();
+  await prisma.contactUs.deleteMany();
   await prisma.user.deleteMany();
 
   const admin = await prisma.user.create({
