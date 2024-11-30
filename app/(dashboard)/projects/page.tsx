@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +23,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -22,28 +39,11 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import type { User } from "@/types/user";
-import { UserRole, ProposalStatus } from "@prisma/client";
-import { EyeIcon, MessageCircleIcon, PaperclipIcon, SendIcon, Pencil, Trash2 } from "lucide-react";
+import { ProposalStatus, UserRole } from "@prisma/client";
+import { EyeIcon, PaperclipIcon, Pencil, SendIcon, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface ProjectProposal {
   id: string;
@@ -74,7 +74,7 @@ interface ProposalReview {
 
 interface AttachmentInput {
   name: string;
-  url: string;
+  file: File | null;
 }
 
 export default function ProjectsPage() {
@@ -90,11 +90,12 @@ export default function ProjectsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [attachmentInput, setAttachmentInput] = useState<AttachmentInput>({
     name: "",
-    url: "",
+    file: null,
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [proposalToDelete, setProposalToDelete] = useState<ProjectProposal | null>(null);
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchProposals = async () => {
     try {
@@ -145,15 +146,47 @@ export default function ProjectsPage() {
     setNewProposal((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAddAttachment = () => {
-    if (attachmentInput.name && attachmentInput.url) {
+  const handleAddAttachment = async () => {
+    // biome-ignore lint/style/useBlockStatements: <explanation>
+    if (!attachmentInput.name || !attachmentInput.file) return;
+
+    const formData = new FormData();
+    formData.append("file", attachmentInput.file);
+
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await response.json();
       const currentAttachments = getAttachments(newProposal.attachments);
-      const updatedAttachments = [...currentAttachments, attachmentInput];
+      const updatedAttachments = [
+        ...currentAttachments,
+        {
+          name: attachmentInput.name,
+          url: data.path,
+        },
+      ];
+
       setNewProposal((prev) => ({
         ...prev,
         attachments: JSON.stringify(updatedAttachments),
       }));
-      setAttachmentInput({ name: "", url: "" }); // Reset input
+
+      setAttachmentInput({ name: "", file: null });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      toast.success("File uploaded successfully!");
+    } catch (error) {
+      toast.error("Failed to upload file");
+      console.error("Upload error:", error);
     }
   };
 
@@ -251,6 +284,41 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // biome-ignore lint/style/useBlockStatements: <explanation>
+    if (!file) return;
+
+    setAttachmentInput((prev) => ({
+      ...prev,
+      file,
+    }));
+  };
+
+  const handleFileDelete = async (fileUrl: string) => {
+    try {
+      const filename = fileUrl.split("/").pop();
+      if (!filename) {
+        return;
+      }
+
+      const res = await fetch("/api/upload/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ filename }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete file");
+      }
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      // Continue with UI update even if file deletion fails
+    }
+  };
+
   if (!currentUser) {
     return null;
   }
@@ -265,7 +333,7 @@ export default function ProjectsPage() {
             if (!open) {
               setIsDialogOpen(false);
               setNewProposal({ title: "", description: "", attachments: "[]" });
-              setAttachmentInput({ name: "", url: "" });
+              setAttachmentInput({ name: "", file: null });
               setIsEditMode(false);
               setProposalToEdit(null);
             }
@@ -315,133 +383,118 @@ export default function ProjectsPage() {
               <div>
                 <Label className="text-blue-600">Attachments</Label>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="attachmentName" className="text-sm text-gray-600">
-                        Name
-                      </Label>
+                  <div className="space-y-2">
+                    <Input
+                      id="attachmentName"
+                      value={attachmentInput.name}
+                      onChange={(e) =>
+                        setAttachmentInput((prev) => ({ ...prev, name: e.target.value }))
+                      }
+                      placeholder="Document name"
+                      className="border-blue-200 focus:border-blue-400"
+                    />
+                    <div className="flex gap-2">
                       <Input
-                        id="attachmentName"
-                        value={attachmentInput.name}
-                        onChange={(e) =>
-                          setAttachmentInput((prev) => ({ ...prev, name: e.target.value }))
-                        }
-                        placeholder="Document name"
-                        className="border-blue-200 focus:border-blue-400"
+                        id="attachmentFile"
+                        type="file"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        ref={fileInputRef}
                       />
-                    </div>
-                    <div>
-                      <Label htmlFor="attachmentUrl" className="text-sm text-gray-600">
-                        URL
-                      </Label>
-                      <Input
-                        id="attachmentUrl"
-                        value={attachmentInput.url}
-                        onChange={(e) =>
-                          setAttachmentInput((prev) => ({ ...prev, url: e.target.value }))
-                        }
-                        placeholder="https://..."
-                        className="border-blue-200 focus:border-blue-400"
-                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <PaperclipIcon className="w-4 h-4 mr-2" />
+                        {attachmentInput.file ? attachmentInput.file.name : "Choose File"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddAttachment}
+                        disabled={!attachmentInput.name || !attachmentInput.file}
+                        className="bg-blue-50 hover:bg-blue-100"
+                      >
+                        Add Attachment
+                      </Button>
                     </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddAttachment}
-                    disabled={!attachmentInput.name || !attachmentInput.url}
-                    className="w-full"
-                  >
-                    Add Attachment
-                  </Button>
-                </div>
 
-                {newProposal.attachments && getAttachments(newProposal.attachments).length > 0 && (
-                  <div className="mt-4">
-                    <Label className="text-blue-600">Current Attachments:</Label>
-                    <ul className="list-disc pl-5 space-y-2">
-                      {getAttachments(newProposal.attachments).map(
-                        (file: { name: string; url: string }, index: number) => (
-                          <li
-                            key={`attachment-${
-                              // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                              index
-                            }`}
-                            className="text-sm flex items-center gap-2 bg-gray-50 p-2 rounded"
-                          >
-                            <div className="flex-1 grid grid-cols-2 gap-2">
-                              <Input
-                                type="text"
-                                defaultValue={file.name}
-                                onBlur={(e) => {
-                                  const currentAttachments = [
-                                    ...getAttachments(newProposal.attachments),
-                                  ];
-                                  const updatedAttachments = currentAttachments.map((att, idx) => {
-                                    if (idx === index) {
-                                      return { ...att, name: e.target.value || "Untitled" };
-                                    }
-                                    return att;
-                                  });
-                                  setNewProposal((prev) => ({
-                                    ...prev,
-                                    attachments: JSON.stringify(updatedAttachments),
-                                  }));
-                                }}
-                                className="flex-1 h-8"
-                                placeholder="Name"
-                              />
-                              <Input
-                                type="text"
-                                defaultValue={file.url}
-                                onBlur={(e) => {
-                                  const currentAttachments = [
-                                    ...getAttachments(newProposal.attachments),
-                                  ];
-                                  const updatedAttachments = currentAttachments.map((att, idx) => {
-                                    if (idx === index) {
-                                      return { ...att, url: e.target.value };
-                                    }
-                                    return att;
-                                  });
-                                  setNewProposal((prev) => ({
-                                    ...prev,
-                                    attachments: JSON.stringify(updatedAttachments),
-                                  }));
-                                }}
-                                className="flex-1 h-8"
-                                placeholder="URL"
-                              />
-                            </div>
-                            <div className="flex gap-1">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                                onClick={() => {
-                                  const currentAttachments = [
-                                    ...getAttachments(newProposal.attachments),
-                                  ];
-                                  const updatedAttachments = currentAttachments.filter(
-                                    (_, i) => i !== index,
-                                  );
-                                  setNewProposal((prev) => ({
-                                    ...prev,
-                                    attachments: JSON.stringify(updatedAttachments),
-                                  }));
-                                }}
+                  {newProposal.attachments &&
+                    getAttachments(newProposal.attachments).length > 0 && (
+                      <div className="mt-4">
+                        <Label className="text-blue-600 mb-2 block">Current Attachments:</Label>
+                        <div className="space-y-2">
+                          {getAttachments(newProposal.attachments).map(
+                            (file: { name: string; url: string }, index: number) => (
+                              <div
+                                key={`attachment-${
+                                  // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                                  index
+                                }`}
+                                className="flex items-center gap-2 bg-gray-50 p-2 rounded border border-gray-200"
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </li>
-                        ),
-                      )}
-                    </ul>
-                  </div>
-                )}
+                                <PaperclipIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                <Input
+                                  type="text"
+                                  value={file.name}
+                                  onChange={(e) => {
+                                    const currentAttachments = [
+                                      ...getAttachments(newProposal.attachments),
+                                    ];
+                                    const updatedAttachments = currentAttachments.map(
+                                      (att, idx) => {
+                                        if (idx === index) {
+                                          return { ...att, name: e.target.value };
+                                        }
+                                        return att;
+                                      },
+                                    );
+                                    setNewProposal((prev) => ({
+                                      ...prev,
+                                      attachments: JSON.stringify(updatedAttachments),
+                                    }));
+                                  }}
+                                  className="h-8 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+                                  placeholder="File name"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                                  onClick={async () => {
+                                    const currentAttachments = [
+                                      ...getAttachments(newProposal.attachments),
+                                    ];
+                                    const attachmentToDelete = currentAttachments[index];
+
+                                    // Delete the physical file first
+                                    await handleFileDelete(attachmentToDelete.url);
+
+                                    // Then update the UI
+                                    const updatedAttachments = currentAttachments.filter(
+                                      (_, i) => i !== index,
+                                    );
+                                    setNewProposal((prev) => ({
+                                      ...prev,
+                                      attachments: JSON.stringify(updatedAttachments),
+                                    }));
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    )}
+                </div>
               </div>
               <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                 {isEditMode ? "Update Proposal" : "Submit Proposal"}
@@ -601,8 +654,13 @@ export default function ProjectsPage() {
                           className="text-blue-600 flex items-center"
                         >
                           <PaperclipIcon className="w-4 h-4 mr-2" />
-                          <a href={attachment.url} target="_blank" rel="noopener noreferrer">
-                            {attachment.name || `Attachment ${index + 1}`}
+                          <a
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            {attachment.name}
                           </a>
                         </li>
                       ),
@@ -612,17 +670,24 @@ export default function ProjectsPage() {
               )}
               <div className="space-y-2">
                 <h3 className="font-semibold text-blue-700">Reviews:</h3>
-                {getProposalReviews(viewProposal.id).map((review: ProposalReview) => (
-                  <div key={review.id} className="bg-gray-100 p-3 rounded">
-                    <p className="text-sm">{review.feedback}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Reviewed by: {review.reviewer.firstName} {review.reviewer.lastName}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Reviewed on: {new Date(review.reviewedAt).toLocaleString()}
-                    </p>
+                {getProposalReviews(viewProposal.id).length > 0 ? (
+                  getProposalReviews(viewProposal.id).map((review: ProposalReview) => (
+                    <div key={review.id} className="bg-gray-100 p-3 rounded">
+                      <p className="text-sm">{review.feedback}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Reviewed by: {review.reviewer.firstName} {review.reviewer.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Reviewed on: {new Date(review.reviewedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500 bg-gray-50 rounded">
+                    <p>No reviews yet</p>
+                    <p className="text-sm">Reviews will appear here once given</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </DialogContent>

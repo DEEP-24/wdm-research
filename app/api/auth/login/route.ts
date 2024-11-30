@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     cookies().set("user-token", user.id);
 
     // Return redirect URL with the success response
-    return NextResponse.json({ success: true, redirectTo: "/" });
+    return NextResponse.json({ success: true, redirectTo: "/dashboard" });
   } catch (error) {
     console.error("[LOGIN_ERROR]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

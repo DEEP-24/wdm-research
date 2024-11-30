@@ -41,7 +41,7 @@ import { useEffect, useState } from "react";
 
 const roleBasedSidebarItems = {
   user: [
-    { icon: HomeIcon, label: "Home", href: "/" },
+    { icon: HomeIcon, label: "Home", href: "/dashboard" },
     { icon: CalendarIcon, label: "Events", href: "/events" },
     { icon: CalendarCheck2Icon, label: "Reservations", href: "/reservations" },
     { icon: FolderKanbanIcon, label: "Projects", href: "/projects" },
@@ -55,7 +55,7 @@ const roleBasedSidebarItems = {
     { icon: MessageSquareIcon, label: "Chat", href: "/chat" },
   ],
   admin: [
-    { icon: HomeIcon, label: "Home", href: "/" },
+    { icon: HomeIcon, label: "Home", href: "/dashboard" },
     { icon: CalendarIcon, label: "Events", href: "/events" },
     { icon: CalendarCheck2Icon, label: "Reservations", href: "/reservations" },
     { icon: FolderKanbanIcon, label: "Projects", href: "/projects" },
@@ -71,7 +71,7 @@ const roleBasedSidebarItems = {
     { icon: MailWarningIcon, label: "Support Requests", href: "/support_requests" },
   ],
   investor: [
-    { icon: HomeIcon, label: "Home", href: "/" },
+    { icon: HomeIcon, label: "Home", href: "/dashboard" },
     {
       icon: BriefcaseBusinessIcon,
       label: "Investment Opportunities",
@@ -82,7 +82,7 @@ const roleBasedSidebarItems = {
     { icon: MessageSquareIcon, label: "Chat", href: "/chat" },
   ],
   organizer: [
-    { icon: HomeIcon, label: "Home", href: "/" },
+    { icon: HomeIcon, label: "Home", href: "/dashboard" },
     { icon: CalendarIcon, label: "Events", href: "/events" },
     { icon: CalendarCheck2Icon, label: "Reservations", href: "/reservations" },
     { icon: HelpCircle, label: "Support", href: "/support" },
@@ -124,7 +124,7 @@ export default function DashboardLayout({
         setCurrentUser(userData);
       } catch (error) {
         console.error("Auth check failed:", error);
-        router.push("/login");
+        router.push("/");
       } finally {
         setIsLoading(false);
       }
@@ -161,7 +161,7 @@ export default function DashboardLayout({
 
       if (response.ok) {
         setCurrentUser(null);
-        router.push("/login");
+        router.push("/");
         router.refresh();
       }
     } catch (error) {

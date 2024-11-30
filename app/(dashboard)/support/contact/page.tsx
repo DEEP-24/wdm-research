@@ -37,13 +37,13 @@ const ContactPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to submit support ticket");
+        throw new Error("Failed to submit support request");
       }
 
-      toast.success("Support ticket submitted successfully!");
+      toast.success("Request submitted successfully!");
       setFormData({ name: "", email: "", subject: "", message: "" });
     } catch (_error) {
-      toast.error("Failed to submit support ticket. Please try again.");
+      toast.error("Failed to submit support request. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -101,20 +101,14 @@ const ContactPage = () => {
           <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
             Subject
           </label>
-          <Select
+          <Input
+            id="subject"
+            placeholder="Subject"
+            className="w-full"
             value={formData.subject}
-            onValueChange={(value) => handleChange(value, "subject")}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a subject" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="general">General Inquiry</SelectItem>
-              <SelectItem value="technical">Technical Support</SelectItem>
-              <SelectItem value="application">Application Help</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+            onChange={(e) => handleChange(e, "subject")}
+            required
+          />
         </div>
 
         <div>

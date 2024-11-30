@@ -1018,10 +1018,11 @@ export default function EventsPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch("/api/user/profile");
+        const response = await fetch("/api/auth/user");
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);
+          console.log("User:", user);
         }
       } catch (error) {
         console.error("Failed to fetch user:", error);

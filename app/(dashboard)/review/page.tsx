@@ -54,6 +54,12 @@ interface ProposalReview {
   };
 }
 
+interface Attachment {
+  name: string;
+  type: string;
+  url: string;
+}
+
 export default function AllProjectsPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [proposals, setProposals] = useState<ProjectProposal[]>([]);
@@ -260,11 +266,19 @@ export default function AllProjectsPage() {
                       <h3 className="font-semibold text-blue-700">Attachments:</h3>
                       <ul className="list-disc pl-5">
                         {JSON.parse(selectedProposal.attachments).map(
-                          (attachment: { name: string; type: string }, index: number) => (
+                          (attachment: Attachment, index: number) => (
                             // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
                             <li key={index} className="text-sm text-blue-600">
                               <PaperclipIcon className="w-4 h-4 inline mr-2" />
-                              {attachment.name} ({attachment.type})
+                              <a
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:underline"
+                              >
+                                {attachment.name}
+                              </a>{" "}
+                              ({attachment.type})
                             </li>
                           ),
                         )}

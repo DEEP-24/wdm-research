@@ -1,6 +1,8 @@
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { unlink } from "node:fs/promises";
+import path from "node:path";
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   try {
@@ -22,6 +24,29 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // First get the proposal to access its attachments
+    const proposalData = await db.projectProposal.findUnique({
+      where: { id: params.id },
+      select: { attachments: true },
+    });
+
+    if (proposalData?.attachments) {
+      const attachments = JSON.parse(proposalData.attachments);
+      for (const attachment of attachments) {
+        try {
+          // Get the filename from the URL
+          const filename = attachment.url.split("/").pop();
+          if (filename) {
+            const filePath = path.join(process.cwd(), "public", "attachments", filename);
+            await unlink(filePath);
+          }
+        } catch (error) {
+          console.error("Error deleting file:", error);
+        }
+      }
+    }
+
+    // Delete the proposal from the database
     await db.projectProposal.delete({
       where: { id: params.id },
     });

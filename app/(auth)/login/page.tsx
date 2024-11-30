@@ -69,7 +69,7 @@ export default function LoginPage() {
         throw new Error(responseData.error || "Login failed");
       }
 
-      router.push(responseData.redirectTo || "/");
+      router.push(responseData.redirectTo || "/dashboard");
     } catch (error) {
       console.error("Login error:", error);
       toast.error(error instanceof Error ? error.message : "An unexpected error occurred");
